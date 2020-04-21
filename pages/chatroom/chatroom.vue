@@ -29,14 +29,14 @@
 			v-for="(value, key) in prop.repeat" 
 			:key="key"
 			:class="prop.class"
-			:style="{bottom:key*100 + 'rpx'}"
 			:src="prop.imgUrl"></image>
 		</view>
 	</view>
 </template>
 
 <script>
-	import Goeasy from 'lib/goeasy-1.0.6.js'
+	import Goeasy from 'lib/goeasy-1.0.6.js';
+	const MyService  = require('lib/service.js')
 	export default {
 		data () {
 			return {
@@ -69,13 +69,14 @@
 				},
 				propTimer : null,
 				throttlePrev : Date.now(),
-				throttleTimer : null
+				throttleTimer : null,
+				myService : null
 			}
 		},
 		onLoad(options) {
+			
 			//获取数据
 			var loginCommand = JSON.parse(options.index);
-			var self = this;
 			//保存当前用户
 			this.currentUserMsg = {
 				senderUserId : (Math.random() * 1000).toString(),
@@ -87,171 +88,112 @@
 			    title: loginCommand.roomName
 			});
 			//获取历史消息
-			this.onlineUserMsg = this.findChatHistory(loginCommand.roomId).map(item => {
+			this.onlineUserMsg = this.uniFindChatHistory(loginCommand.roomId).map(item => {
 				if(typeof item.content == 'string') {
 					item.content = JSON.parse(item.content)
 				}
 				return item;
 			});
-			//初始化goeasy
-			this.initGoeasy(loginCommand);
+			
+			this.myService = new MyService({
+				// appkey :'BC-cb2b54aa56b948bfad5e971970681d6e',
+				appkey : 'BC-ede22e1d66834d838fe1dee6709c4dc3'
+			},{
+				//todo 所有的逻辑回调
+				onConnectFailed : this.onConnectFailed,
+				onHereNowSuccess : this.onHereNowSuccess,
+				onHereNowFailed : this.onHereNowFailed,
+				onPresenceOnline : this.onPresenceOnline,
+				onPresenceOffline : this.onPresenceOffline,
+				onPresenceFailed : this.onPresenceFailed,
+				onMessageSuccess : this.onMessageSuccess,
+				// saveChatMessage : this.uniSaveChatMessage,
+				onPublishSuccess : this.onPublishSuccess
+			});
+			this.myService.initGoeasy(this.user(this.currentUserMsg.senderUserId, this.currentUserMsg.senderNickname, loginCommand.avatar));
+			this.myService.initialOnlineUsers([loginCommand.roomId]);
+			this.myService.subscriberPresence(loginCommand.roomId);
+			this.myService.subscriberNewMessage(loginCommand.roomId)
 		},
 		onBackPress () {//返回取消订阅
-			this.goeasy.unsubscribe({
-				channel: this.currentRoomId,
-				onSuccess: function() {
-					console.log("订阅取消成功。");
-				},
-				onFailed: function(error) {
-					console.log("取消订阅失败，错误编码：" + error.code + " 错误信息：" + error.content)
-				}
-			});
-			
-			this.goeasy.unsubscribePresence({
-				channel: this.currentRoomId,
-				onSuccess: function() {
-					console.log("Presence取消成功。");
-				},
-				onFailed: function(error) {
-					console.log("Presence取消失败，错误编码：" + error.code + " 错误信息：" + error.content)
-				}
-			});
-			this.goeasy.disconnect();
+			this.myService.unsubscribe(this.currentRoomId)
+			this.myService.unsubscribePresence(this.currentRoomId)
+			this.myService.disconnect();
 		},
 		methods: {
-			initGoeasy (loginCommand) {//初始化goeasy
-				var self = this;
-				this.goeasy = Goeasy({
-					host: "hangzhou.goeasy.io",
-					appkey: "您的key",
-					userId: self.currentUserMsg.senderUserId,
-					userData: '{"nickname":"' + loginCommand.nickname + '","avatar":"' + loginCommand.avatar + '"}',
-					onConnected: function () {
-					    console.log( "GoEasy connect successfully.")
-					},
-					onDisconnected: function () {
-					    console.log("GoEasy disconnected.")
-					},
-					onConnectFailed: function (error) {
-					    uni.showToast({
-							title:"GoEasy连接失败，请确认service.js文件70行appkey和host配置正确.",
-							duration:6000,
-							icon:"none"
-					    });
-					}
-				})
-				//本应该有相应的回调关系，但goeasy已经做了处理，未连接的状态，所有的监听都会处于等待状态，可以放心这样使用
-				//为了更好的性能，也可以在成功回调里对应做处理
-				this.initialOnlineUsers(loginCommand);
-				this.subscriberPresence(loginCommand);
-				this.subscriberNewMessage(loginCommand);
-			},
-			initialOnlineUsers (loginCommand) {//初始化onlineUsers对象
-				var self = this;
-				this.goeasy.hereNow({
-					channels: [loginCommand.roomId],
-					includeUsers: true,
-					distinct: true
-				}, function(result) {
-					if (result.code == 200) {
-						var currentRoomOnlineUsers = result.content.channels[loginCommand.roomId];
-				        currentRoomOnlineUsers.users.forEach(function(onlineUser) {
-							var userData = JSON.parse(onlineUser.data);
-				            self.onlineUsers.users.unshift(self.user(onlineUser.id,userData.nickname,userData.avatar));
-						});
-				        //赋值
-						self.onlineUsers.count = currentRoomOnlineUsers.clientAmount;
-					}
-					if(result.code == 401) {
-						uni.showToast({
-							title:"您还没有高级功能的权限，付费用户请联系GoEasy开通",
-							duration:6000,
-							icon : "none"
-						});
-					}
+			showUniToast (msg) {//弹框提示
+				var message = msg ? msg : "GoEasy连接失败，请确认service.js文件70行appkey和host配置正确.";
+				uni.showToast({
+					title:message,
+					duration:6000,
+					icon:"none"
 				});
 			},
-			subscriberPresence (loginCommand) {//监听用户上下线时间
-				var self = this;
-				this.goeasy.subscribePresence({
-					channel: loginCommand.roomId,
-					onPresence: function(presenceEvents) {
-						//更新onlineUsers在线用户数
-						self.onlineUsers.count = presenceEvents.clientAmount;
-						presenceEvents.events.forEach(function(event) {							
-							//如果有用户进入聊天室
-							if (event.action == "join" || event.action == "online") {
-								//todo 是否优化相同用户加入的情况 demo 可忽略
-								var userData = JSON.parse(event.userData);
-								//将新用户加入onlineUsers列表
-								self.onlineUsers.users.push(self.user(event.userId,userData.nickname,userData.avatar));
-								self.onNewMessage({
-									senderNickname : userData.nickname,
-									content : '进入房间'
-								},false);
-							} else {
-								var leavingUserIndex = self.onlineUsers.users.findIndex(item => item.id == event.userId);
-								if(leavingUserIndex>-1) {
-									//将离开的用户从onlineUsers中删掉
-									var leavingUser = Object.assign(self.onlineUsers.users[leavingUserIndex]);
-									self.onlineUsers.users.splice(leavingUserIndex, 1);
-									self.onNewMessage({
-										senderNickname : leavingUser.nickname,
-										content : '退出房间'
-									},false);
-								}
-							}
-						});
-						
-					},
-					onSuccess : function () {
-						console.log("监听成功")
-					},
-					onFailed : function () {
-						console.log("监听失败")
-						uni.showToast({
-							title:"您还没有高级功能的权限，付费用户请联系GoEasy开通",
-							duration:6000,
-							icon : "none"
-						});
-					}
-				});
+			onConnectFailed () {//连接失败
+				this.showUniToast()
 			},
-			subscriberNewMessage (loginCommand) {//监听消息或道具
-				var self = this;
-				this.goeasy.subscribe({
-					channel: loginCommand.roomId, //替换为您自己的channel
-					onMessage: function(message) {
-						var chatMessage = JSON.parse(message.content);
-						//todo:事实上不推荐在前端收到时保存, 一个用户开多个窗口，会导致重复保存, 建议所有消息都是都在发送时在服务器端保存，这里只是为了演示
-						self.saveChatMessage(loginCommand.roomId, message);
-						//显示消息 0 表示文字消息，1为道具
-						if (chatMessage.type == 0) {
-							var selfSent = chatMessage.senderUserId == self.currentUserMsg.senderUserId;
-							self.onNewMessage(chatMessage, selfSent);
-						}
-						if (chatMessage.type == 1) {
-							//0为比心 1为火箭
-							if (chatMessage.content == 1) {
-								//todo 动画
-								self.throttle(self.handleProps.bind(self,'rocket'), 2000)
-								self.onNewMessage({
-									senderNickname : chatMessage.senderNickname,
-									content : '送出了一枚大火箭'
-								},false);
-
-							}
-							if (chatMessage.content == 0) {
-								//todo  动画
-								self.throttle(self.handleProps.bind(self,'heart'), 2000)
-								self.onNewMessage({
-									senderNickname : chatMessage.senderNickname,
-									content : '送出了一个大大的比心'
-								},false);
-							}
-						}
+			onHereNowSuccess (res) {//初始化onlineUsers对象 成功
+				this.onlineUsers.users = res.onlineUsers;
+				this.onlineUsers.count = res.onlineUserCount;
+			},
+			onHereNowFailed (code) {//初始化onlineUsers对象 其他状态码
+				if(code == 401) {
+					let msg = "您还没有高级功能的权限，付费用户请联系GoEasy开通";
+					this.showUniToast(msg)
+				}
+			},
+			onPresenceOnline (res) {//用户上线监听
+				this.onlineUsers.users.push(res.onlineUser)
+				this.onlineUsers.count = res.onlineUserCount
+				this.onNewMessage({
+					senderNickname : res.onlineUser.nickname,
+					content : '进入房间'
+				},false);
+			},
+			onPresenceOffline (res) {//用户下线 监听
+				let offlineUserIdex = this.onlineUsers.users.findIndex(item => item.id == event.userId);
+				if(offlineUserIdex>-1) {
+					//将离开的用户从onlineUsers中删掉
+					let offlineUser = Object.assign(this.onlineUsers.users[offlineUserIdex]);
+					this.onlineUsers.users.splice(offlineUserIdex, 1);
+					this.onlineUsers.count--;
+					this.onNewMessage({
+						senderNickname : offlineUser.nickname,
+						content : '退出房间'
+					},false);
+				}
+			},
+			onPresenceFailed () {//监听上下线失败
+				var msg = "您还没有高级功能的权限，付费用户请联系GoEasy开通";
+				this.showUniToast(msg)
+			},
+			onMessageSuccess (res) {//监听消息 成功
+				//显示消息 0 表示文字消息，1为道具
+				console.log(res.type)
+				if (res.type == 0) {
+					let selfSent = res.senderUserId == this.currentUserMsg.senderUserId;
+					this.onNewMessage(res, selfSent);
+				}
+				if (res.type == 1) {
+					//0为比心 1为火箭
+					if (res.content == 1) {
+						//todo 动画
+						this.handleProps.call(res,'rocket')
+						this.onNewMessage({
+							senderNickname : res.senderNickname,
+							content : '送出了一枚大火箭'
+						},false);
+	
 					}
-				});
+					if (res.content == 0) {
+						//todo  动画
+						this.handleProps.call(this,'heart')
+						this.onNewMessage({
+							senderNickname : res.senderNickname,
+							content : '送出了一个大大的比心'
+						},false);
+					}
+				}
 			},
 			onNewMessage (content, selfSent) {//收到新消息处理
 				this.onlineUserMsg.push({
@@ -267,18 +209,10 @@
 				if(content == "" && messageType == 0) return;
 				this.currentUserMsg.type = messageType;
 				this.currentUserMsg.content = content;
-				var self = this;
-				this.goeasy.publish({
-					channel: self.currentRoomId,
-					message: JSON.stringify(this.currentUserMsg),
-					onSuccess: function() {
-						console.log("消息发布成功。");
-						self.myMessage = ""
-					},
-					onFailed: function(error) {
-						console.log("消息发送失败，错误编码：" + error.code + " 错误信息：" + error.content);
-					}
-				});
+				this.myService.publish(this.currentRoomId, this.currentUserMsg)
+			},
+			onPublishSuccess () {//发送成功回调
+				this.myMessage = ""
 			},
 			handleHeart () {//比心
 				//比心
@@ -345,31 +279,33 @@
 					zIndex : 100-key
 				}
 			},
-			findChatHistory (roomId) {//查找历史记录
-				var localStorageKey = 'room_' + roomId;
-				var arr = [];
-				try{
-					var jsonStr = uni.getStorageSync(localStorageKey);
-					if(jsonStr){
-						arr = JSON.parse(jsonStr)
-					}
-				}catch(e) {
-					console.log(e)
-				}
-				return arr;
+			uniSaveChatMessage (uni ,roomId, chatMessage) {//uniapp缓存方式
+			    // let localStorageKey = 'room_' + roomId;
+			    // let arr = [];
+			    // try {
+			    //     const jsonStr = uni.getStorageSync(localStorageKey);
+			    //     if (jsonStr) {
+			    //         arr = [chatMessage,...JSON.parse(jsonStr)]
+			    //     }
+			    //     uni.setStorageSync(localStorageKey,JSON.stringify(arr))
+			    // }catch(e) {
+			    //     console.log(e)
+			    // }
 			},
-			saveChatMessage (roomId,chatMessage) {//缓存历史记录
-				var localStorageKey = 'room_' + roomId;
-				var arr = [];
-				try {
-					const jsonStr = uni.getStorageSync(localStorageKey);
-					if (jsonStr) {
-					    arr = [chatMessage,...JSON.parse(jsonStr)]
-					}
-					uni.setStorageSync(localStorageKey,JSON.stringify(arr))
-				}catch(e) {
-					console.log(e)
-				}
+			
+			uniFindChatHistory(uni, roomId) {
+			    // let localStorageKey = 'room_' + roomId;
+			    // let arr = [];
+			    // try{
+			    //     var jsonStr = uni.getStorageSync(localStorageKey);
+			    //     if(jsonStr){
+			    //         arr = JSON.parse(jsonStr)
+			    //     }
+			    // }catch(e) {
+			    //     console.log(e)
+			    // }
+			    // return arr;
+				return [];
 			}
 		}
 	}
@@ -499,18 +435,16 @@
 	}
 	.show-animation{
 		width:80rpx;
-		height: 400rpx;
+		height: 320rpx;
 		position: fixed;
 		z-index: 44;
 		left:50%;
 		bottom:80rpx;
 		margin:0 -40rpx;
+		justify-content: flex-end;
 		animation: myanimation 2s linear;
 	}
 	.show-animation image{
-		position: absolute;
-		bottom: 0rpx;
-		left:0;
 		width:80rpx;
 	}
 	.show-animation .prop-heart{
