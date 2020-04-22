@@ -1,0 +1,434 @@
+Index: lib/restapi.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- lib/restapi.js	(date 1587555762959)
++++ lib/restapi.js	(date 1587555762959)
+@@ -0,0 +1,55 @@
++var RestApi = {
++
++    webfindChatHistory: function(roomId) {
++        var localStorageKey = 'room_' + roomId;
++        var chatHistoryAsString = localStorage.getItem(localStorageKey);
++        if (chatHistoryAsString != null) {
++            var chatHistory = JSON.parse(chatHistoryAsString);
++            return chatHistory;
++        }
++        return [];
++    },
++
++    webSveChatMessage : function(roomId, chatMessage) {
++        var localStorageKey = 'room_' + roomId;
++        var chatHistoryAsString = localStorage.getItem(localStorageKey);
++        var chatHistory;
++        if (chatHistoryAsString == null || chatHistoryAsString == "") {
++            chatHistory = [];
++        } else {
++            chatHistory = JSON.parse(chatHistoryAsString);
++        }
++        chatHistory.push(chatMessage);
++        chatHistoryAsString = JSON.stringify(chatHistory);
++        localStorage.setItem(localStorageKey, chatHistoryAsString);
++    },
++
++
++    uniappSaveChatMessage:function(uni) {//uniapp缓存方式
++        let localStorageKey = 'room_' + roomId;
++        let arr = [];
++        try {
++            const jsonStr = uni.getStorageSync(localStorageKey);
++            if (jsonStr) {
++                arr = [chatMessage,...JSON.parse(jsonStr)]
++            }
++            uni.setStorageSync(localStorageKey,JSON.stringify(arr))
++        }catch(e) {
++            console.log(e)
++        }
++    },
++
++    uniappFindChatMessages:function(roomId) {//uniapp 查找缓存
++        let localStorageKey = 'room_' + roomId;
++        let arr = [];
++        try{
++            var jsonStr = uni.getStorageSync(localStorageKey);
++            if(jsonStr){
++                arr = JSON.parse(jsonStr)
++            }
++        }catch(e) {
++            console.log(e)
++        }
++        return arr;
++    }
++};
+Index: pages/index/index.vue
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- pages/index/index.vue	(revision 81c1f620631823c682ed397e1f362306aa73e26e)
++++ pages/index/index.vue	(date 1587552984417)
+@@ -18,7 +18,7 @@
+ 					<view 
+ 					:class="avatarActiveKey == key ? 'avatar-box-item active' : 'avatar-box-item '" 
+ 					v-for="(value, key) in avatarList" :key="key" 
+-					@click="handleCheckAvatar(key, value.imgUrl)">
++					@click="handleSelectAvatar(key, value.imgUrl)">
+ 						<image :src="value.imgUrl"></image>
+ 					</view>
+ 				</view>
+@@ -42,7 +42,7 @@
+ 		data() {
+ 			return {
+ 				showAvatarNotice : true,
+-				showUserNameNotice : true,
++				showAvatarError : true,
+ 				avatarActiveKey : -1,
+ 				loginCommand : {
+ 					avatar : '',
+@@ -76,13 +76,13 @@
+ 				this.loginCommand.nickname = event.target.value;
+ 				this.showUserNameNotice = this.loginCommand.nickname .trim() == "" ? true : false;
+ 			},
+-			handleCheckAvatar (key, imgUrl) {//选择头像
++			handleSelectAvatar (key, imgUrl) {//选择头像
+ 				this.avatarActiveKey = key;
+-				this.showAvatarNotice = false;
++				this.showAvatarError = false;
+ 				this.loginCommand.avatar = imgUrl;
+ 			},
+ 			handleLogin(value) {//登录
+-				if(this.showAvatarNotice || this.loginCommand.nickname  == "") {
++				if(this.showAvatarError || this.loginCommand.nickname  == "") {
+ 					uni.showToast({
+ 						title:"请输入昵称，并选择头像",
+ 						duration:2000,
+@@ -90,11 +90,18 @@
+ 					});
+ 					return
+ 				}
+-				this.loginCommand.roomId = value.roomId;
+-				this.loginCommand.roomName = value.name;
+-				var params = JSON.stringify(this.loginCommand)
++				this.roomToken ={
++					roomId: value.roomId,
++					roomName:value.name,
++					userId:(Math.random() * 1000).toString(),
++					nickname:this.loginCommand.nickname,
++					avatar:this.loginCommand.avatar
++				}
++				this.roomCommand.roomId = value.roomId;
++				this.roomCommand.roomName = value.name;
++				var roomTokenAsJsonString = JSON.stringify(this.roomToken)
+ 				uni.navigateTo({
+-					url:"/pages/chatroom/chatroom?index=" + params
++					url:"/pages/chatroom/chatroom?roomToken=" + roomTokenAsJsonString
+ 				})
+ 			}
+ 		}
+Index: lib/service.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- lib/service.js	(revision 81c1f620631823c682ed397e1f362306aa73e26e)
++++ lib/service.js	(date 1587556825331)
+@@ -9,21 +9,19 @@
+ //引入方式随框架环境变化
+ const Goeasy  = require('./goeasy-1.0.6');
+ 
+-var MyService = (function () {
+-	
++var ChatRoomService = (function () {
++
+ 	function User(id, nickname, avatar) {
+ 	    this.id = id;
+ 	    this.nickname = nickname;
+ 	    this.avatar = avatar;
+ 	}
+-	
+-	function MyService(callback) {
+-	
++
++	function MyService(user) {
++
+ 	    this.goeasy = null;
+-	    this.config = {
+-			appkey : '您的key',
+-			host : 'hangzhou.goeasy.io'
+-		};
++
++        this.initGoeasy(user);
+ 
+ 	    this.onHereNowSuccess = function () {};
+ 
+@@ -48,19 +46,15 @@
+ 	 * 初始化goeasy
+ 	 * @param {Object} user
+ 	 */
+-	MyService.prototype.initGoeasy = function (user, roomId) {
++	MyService.prototype.initGoeasy = function (user) {
+ 		let self = this;
+-		console.log(this.config)
+ 		this.goeasy = Goeasy({
+-			host : this.config.host,
+-			appkey : this.config.appkey,
++			host : '',
++			appkey : '',
+ 			userId : user.id,
+ 			userData : '{"nickname":"' + user.nickname + '","avatar":"' + user.avatar + '"}',
+ 			onConnected : function () {
+-				console.log( "GoEasy connect successfully.");
+-				self.initialOnlineUsers(roomId);
+-				self.subscriberPresence(roomId);
+-				self.subscriberNewMessage(roomId)
++                console.log( "GoEasy connect successfully.");
+ 			},
+ 			onDisconnected : function () {
+ 				console.log("GoEasy disconnected.");
+@@ -69,8 +63,20 @@
+ 				console.log("GoEasy连接失败，请确认service.js文件70行appkey和host配置正确.")
+ 			}
+ 		})
++
++
++        self.initialOnlineUsers(roomId);
++        self.subscriberPresence(roomId);
++        self.subscriberNewMessage(roomId)
+ 		
+ 	};
++
++
++
++
++    MyService.prototype.loadOnlineUsers = function() {
++        return this.onlineUsers;
++    };
+ 	
+ 	/**
+ 	 * 初始化在线用户
+@@ -268,9 +274,12 @@
+ 	        }
+ 	    }
+ 	};
++
++
++
+ 	
+ 	return MyService
+ })()
+ 
+-module.exports = MyService
++module.exports = ChatRoomService
+ 
+Index: pages/chatroom/chatroom.vue
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- pages/chatroom/chatroom.vue	(revision 81c1f620631823c682ed397e1f362306aa73e26e)
++++ pages/chatroom/chatroom.vue	(date 1587557405303)
+@@ -33,78 +33,94 @@
+ 
+ <script>
+ 	const MyService  = require('lib/service.js')
+-	export default {
+-		data () {
++
++    this.myService.loadMessages = function (roomid) {
++        return undefined;
++    }
++
++    export default {
++    //
++    //     //消息类型
++    //     var MessageType = {
++    //         //文字聊天
++    //         CHAT: 0,
++    //         //道具-比心
++    //         PROP: 1
++    //     };
++    //
++    // //道具类型
++    // var Prop = {
++    //     //桃心
++    //     HEART: 0,
++    //     //火箭
++    //     ROCKET: 1
++    // };
++
++
++    data () {
+ 			return {
+-				onlineUsers : {
+-					count :1,
+-					users : []
+-				},
+-				chatMessage : [],
+-				user : function (id,nickname,avatar) {
+-					return {
+-						id : id,
+-						nickname : nickname,
+-						avatar : avatar
+-					}
+-				},
+-				currentUser : {
+-					senderNickname : "",
+-					senderUserId : null,
+-					type : 0,
+-					content : null
+-				},
+-				currentRoomId : null,
+-				myMessage : '',
+-				scrollIntoViewKey : '',
+-				showHeart : false,
++                roomid : null,
++
++                onlineUsers : {
++                    count :0,
++                    users : []
++                },
++
++                currentUser: {
++                    nickname : "",
++                    userId : null,
++                    avatar : ""
++                },
++
++                messages: [],
++
++                newMessage: {
++                    type: 0,
++                    content: null
++                },
++
++
++                contentPosition : '',
++
++				showProp : null,
+ 				showAnimation : false,
+-				myService : null,
++                chatRoomService : null,
+ 				propTimer : null
+ 			}
+ 		},
+-		onLoad(options) {	
++		onLoad(options) {
++
+ 			//获取数据
+-			var loginCommand = JSON.parse(options.index);
+-			//保存当前用户
+-			this.currentUser = {
+-				senderUserId : (Math.random() * 1000).toString(),
+-				senderNickname : loginCommand.nickname
+-			};
+-			//保存当前房间id
+-			this.currentRoomId = loginCommand.roomId;
+-			
+-			//设置导航标题
+-			uni.setNavigationBarTitle({
+-			    title: loginCommand.roomName
+-			});
+-			//获取历史消息
+-			this.chatMessage = this.uniFindChatHistory(loginCommand.roomId).map(item => {
+-				if(typeof item.content == 'string') {
+-					item.content = JSON.parse(item.content)
+-				}
+-				return item;
+-			});
+-			
+-			let callback = {
+-				onHereNowSuccess : this.onHereNowSuccess,
+-				onPresenceOnline : this.onPresenceOnline,
+-				onPresenceOffline : this.onPresenceOffline,
+-				onMessageSuccess : this.onMessageSuccess,
+-				saveChatMessage : this.uniSaveChatMessage,
+-				onPublishSuccess : this.onPublishSuccess
+-			};
+-			let user = this.user(this.currentUser.senderUserId, this.currentUser.senderNickname, loginCommand.avatar)
+-			
+-			//构造myservice
+-			this.myService = new MyService(callback);
+-			//初始化service
+-			this.myService.initGoeasy(user, loginCommand.roomId);
+-			
+-		},
++			var roomToken = JSON.parse(options.roomToken);
++
++            this.roomid = roomToken.roomId;
++            uni.setNavigationBarTitle({
++                title: roomToken.roomName
++            });
++
++            //保存当前用户
++            this.currentUser = {
++                id: roomToken.userId,
++                nickname: roomToken.nickname,
++                avatar: roomToken.avatar,
++            };
++
++            this.chatRoomService = new ChatRoomService(this.currentUser);
++
++
++            this.myService.loadOnlineUsers(this.roomid,this.loadOnlineUserCallback);
++            this.myService.listenUserOnlineOffline(this.onUserOnline, this.onUserOffline);
++
++            this.myService.listenNewMessage(this.onNewMessage,this.onNewProp);
++            this.messages = this.myService.loadChatMessages(this.roomid);
++
++            this.messages = this.myService.loadMessages(this.roomid);
++
++
++        },
+ 		onBackPress () {//返回按钮
+ 			//断开连接
+-			this.myService.disconnect(this.currentRoomId);
++			this.myService.quiteRoom(this.currentRoomId);
+ 		},
+ 		methods: {
+ 			onHereNowSuccess (res) {//初始化onlineUsers对象 成功
+@@ -119,6 +135,9 @@
+ 					content : '进入房间'
+ 				},false);
+ 			},
++            loadOnlineUserCallback() {
++
++            },
+ 			onPresenceOffline (res) {//用户下线 监听
+ 				let offlineUserIndex = this.onlineUsers.users.findIndex(item => item.id == event.userId);
+ 				if(offlineUserIndex>-1) {
+@@ -197,33 +216,7 @@
+ 					zIndex : 100-key
+ 				}
+ 			},
+-			uniSaveChatMessage (roomId, chatMessage) {//uniapp缓存方式
+-			    let localStorageKey = 'room_' + roomId;
+-			    let arr = [];
+-			    try {
+-			        const jsonStr = uni.getStorageSync(localStorageKey);
+-			        if (jsonStr) {
+-			            arr = [chatMessage,...JSON.parse(jsonStr)]
+-			        }
+-			        uni.setStorageSync(localStorageKey,JSON.stringify(arr))
+-			    }catch(e) {
+-			        console.log(e)
+-			    }
+-			},
+-			
+-			uniFindChatHistory(roomId) {//uniapp 查找缓存
+-			    let localStorageKey = 'room_' + roomId;
+-			    let arr = [];
+-			    try{
+-			        var jsonStr = uni.getStorageSync(localStorageKey);
+-			        if(jsonStr){
+-			            arr = JSON.parse(jsonStr)
+-			        }
+-			    }catch(e) {
+-			        console.log(e)
+-			    }
+-			    return arr;
+-			}
++
+ 		}
+ 	}
+ </script>
