@@ -83,6 +83,11 @@
 			},
 			handleLogin(value) {//登录
 				if(this.showAvatarNotice || this.loginCommand.nickname  == "") {
+					uni.showToast({
+						title:"请输入昵称，并选择头像",
+						duration:2000,
+						icon:"none"
+					});
 					return
 				}
 				this.loginCommand.roomId = value.roomId;

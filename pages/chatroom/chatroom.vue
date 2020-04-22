@@ -8,7 +8,7 @@
 		</view>
 		<view class="chat-room-container">
 			<scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="scrollIntoViewKey" show-scrollbar="true">
-				<view class="message-box" v-for="(value, key) in onlineUserMsg" :key="key" :id="'message-box'+ key">
+				<view class="message-box" v-for="(value, key) in chatMessage" :key="key" :id="'message-box'+ key">
 					<view class="message-item">
 						<text class="user-name">{{value.content && value.content.senderNickname}}: </text>
 						<text :class="value.selfSent ? 'user-message self' : 'user-message' ">{{value.content && value.content.content}}</text>
@@ -24,18 +24,14 @@
 				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
 			</view>
 		</view>
-		<view class="show-animation" v-show="prop.show">
-			<image 
-			v-for="(value, key) in prop.repeat" 
-			:key="key"
-			:class="prop.class"
-			:src="prop.imgUrl"></image>
+		<view class="show-animation" v-if="showAnimation">
+			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="showHeart"></image>
+			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="!showHeart"></image>
 		</view>
 	</view>
 </template>
 
 <script>
-	import Goeasy from 'lib/goeasy-1.0.6.js';
 	const MyService  = require('lib/service.js')
 	export default {
 		data () {
@@ -44,8 +40,7 @@
 					count :1,
 					users : []
 				},
-				onlineUserMsg : [],
-				goeasy : null,
+				chatMessage : [],
 				user : function (id,nickname,avatar) {
 					return {
 						id : id,
@@ -62,17 +57,13 @@
 				currentRoomId : null,
 				myMessage : '',
 				scrollIntoViewKey : '',
-				prop : {
-					show : false,
-					repeat : 1,
-					imgUrl : ''
-				},
-				propTimer : null,
-				myService : null
+				showHeart : false,
+				showAnimation : false,
+				myService : null,
+				propTimer : null
 			}
 		},
-		onLoad(options) {
-			
+		onLoad(options) {	
 			//获取数据
 			var loginCommand = JSON.parse(options.index);
 			//保存当前用户
@@ -88,62 +79,37 @@
 			    title: loginCommand.roomName
 			});
 			//获取历史消息
-			this.onlineUserMsg = this.uniFindChatHistory(loginCommand.roomId).map(item => {
+			this.chatMessage = this.uniFindChatHistory(loginCommand.roomId).map(item => {
 				if(typeof item.content == 'string') {
 					item.content = JSON.parse(item.content)
 				}
 				return item;
 			});
 			
-			let config = {
-				appkey : '您的key',
-				host : 'hangzhou.goeasy.io'
-			};
-			
 			let callback = {
-				onConnectFailed : this.onConnectFailed,
 				onHereNowSuccess : this.onHereNowSuccess,
-				onHereNowFailed : this.onHereNowFailed,
 				onPresenceOnline : this.onPresenceOnline,
 				onPresenceOffline : this.onPresenceOffline,
-				onPresenceFailed : this.onPresenceFailed,
 				onMessageSuccess : this.onMessageSuccess,
 				saveChatMessage : this.uniSaveChatMessage,
 				onPublishSuccess : this.onPublishSuccess
 			};
 			let user = this.user(this.currentUser.senderUserId, this.currentUser.senderNickname, loginCommand.avatar)
 			
-			this.myService = new MyService(config,callback);
-			this.myService.initGoeasy(user);
-			this.myService.initialOnlineUsers(loginCommand.roomId);
-			this.myService.subscriberPresence(loginCommand.roomId);
-			this.myService.subscriberNewMessage(loginCommand.roomId)
+			//构造myservice
+			this.myService = new MyService(callback);
+			//初始化service
+			this.myService.initGoeasy(user, loginCommand.roomId);
+			
 		},
-		onBackPress () {//返回取消订阅
-			this.myService.unsubscribe(this.currentRoomId)
-			this.myService.unsubscribePresence(this.currentRoomId)
-			this.myService.disconnect();
+		onBackPress () {//返回按钮
+			//断开连接
+			this.myService.disconnect(this.currentRoomId);
 		},
 		methods: {
-			showUniToast (msg) {//弹框提示
-				var message = msg ? msg : "GoEasy连接失败，请确认service.js文件70行appkey和host配置正确.";
-				uni.showToast({
-					title:message,
-					duration:6000,
-					icon:"none"
-				});
-			},
-			onConnectFailed () {//连接失败
-				this.showUniToast()
-			},
 			onHereNowSuccess (res) {//初始化onlineUsers对象 成功
 				this.onlineUsers.users = res.onlineUsers;
 				this.onlineUsers.count = res.onlineUserCount;
-			},
-			onHereNowFailed (code) {//初始化onlineUsers对象 其他状态码
-				if(code == 401) {
-					this.onPresenceFailed()
-				}
 			},
 			onPresenceOnline (res) {//用户上线监听
 				this.onlineUsers.users.push(res.onlineUser)
@@ -154,21 +120,17 @@
 				},false);
 			},
 			onPresenceOffline (res) {//用户下线 监听
-				let offlineUserIdex = this.onlineUsers.users.findIndex(item => item.id == event.userId);
-				if(offlineUserIdex>-1) {
+				let offlineUserIndex = this.onlineUsers.users.findIndex(item => item.id == event.userId);
+				if(offlineUserIndex>-1) {
 					//将离开的用户从onlineUsers中删掉
-					let offlineUser = Object.assign(this.onlineUsers.users[offlineUserIdex]);
-					this.onlineUsers.users.splice(offlineUserIdex, 1);
+					let offlineUser = Object.assign(this.onlineUsers.users[offlineUserIndex]);
+					this.onlineUsers.users.splice(offlineUserIndex, 1);
 					this.onlineUsers.count--;
 					this.onNewMessage({
 						senderNickname : offlineUser.nickname,
 						content : '退出房间'
 					},false);
 				}
-			},
-			onPresenceFailed () {//监听上下线失败
-				var msg = "您还没有高级功能的权限，付费用户请联系GoEasy开通";
-				this.showUniToast(msg)
 			},
 			onMessageSuccess (res) {//监听消息 成功
 				//显示消息 0 表示文字消息，1为道具
@@ -179,7 +141,6 @@
 				if (res.type == 1) {
 					//0为比心 1为火箭
 					if (res.content == 1) {
-						//todo 动画
 						this.handleProps.call(res,'rocket')
 						this.onNewMessage({
 							senderNickname : res.senderNickname,
@@ -188,7 +149,6 @@
 	
 					}
 					if (res.content == 0) {
-						//todo  动画
 						this.handleProps.call(this,'heart')
 						this.onNewMessage({
 							senderNickname : res.senderNickname,
@@ -198,13 +158,13 @@
 				}
 			},
 			onNewMessage (content, selfSent) {//收到新消息处理
-				this.onlineUserMsg.push({
+				this.chatMessage.push({
 					content : content,
 					selfSent : selfSent
 				})
 				//滚动到对应位置
 				setTimeout(() => {
-					this.scrollIntoViewKey = 'message-box'+(this.onlineUserMsg.length-1);
+					this.scrollIntoViewKey = 'message-box'+(this.chatMessage.length-1);
 				}, 300)
 			},
 			sendMessage (messageType, content) {//发送消息
@@ -218,38 +178,15 @@
 			},
 			handleProps (type) {//道具动画
 				//动画的实现，可以不用关心
-				var heart = {
-					repeat :4,
-					imgUrl : '../../static/images/heart.png',
-					show : true,
-					class:"prop-heart"
-				};
-				var rocket = {
-					repeat :1,
-					imgUrl : '../../static/images/rokect.png',
-					show : true,
-					class : 'prop-rocket'
-				};
 				if(this.propTimer) {
-					this.prop = {
-						repeat: 0,
-						imgUrl:"",
-						show:false,
-						class: ""
-					}
-					clearTimeout(this.propTimer)
-					this.propTimer = null;
-				}
-				this.prop = type == 'heart' ? heart : rocket;
-				
+					return;
+				};
+				this.showHeart = type == 'heart' ? true : false;
+				this.showAnimation = true;
 				this.propTimer = setTimeout(() => {
-					this.prop = {
-						repeat: 0,
-						imgUrl:"",
-						show:false,
-						class: ""
-					}
-				},1800)
+					this.showAnimation = false;
+					this.propTimer = null;
+				},2000)
 			},
 			handleInputMessage (event) {//双向绑定消息 兼容
 				this.myMessage = event.target.value;
@@ -274,7 +211,7 @@
 			    }
 			},
 			
-			uniFindChatHistory(roomId) {
+			uniFindChatHistory(roomId) {//uniapp 查找缓存
 			    let localStorageKey = 'room_' + roomId;
 			    let arr = [];
 			    try{
@@ -286,7 +223,6 @@
 			        console.log(e)
 			    }
 			    return arr;
-				return [];
 			}
 		}
 	}
@@ -337,8 +273,6 @@
 	.online-avatar-item image{
 		width:80rpx;
 		height: 80rpx;
-		border: none;
-		outline: none;
 	}
 	.chat-room-container{
 		flex:1;
@@ -425,14 +359,13 @@
 		justify-content: flex-end;
 		animation: myanimation 2s linear;
 	}
-	.show-animation image{
+	.prop-heart{
+		height: 80rpx;
 		width:80rpx;
 	}
-	.show-animation .prop-heart{
-		height: 80rpx;
-	}
-	.show-animation .prop-rocket{
+	.prop-rocket{
 		height:160rpx;
+		width:80rpx;
 	}
 	@keyframes myanimation{
 		from{bottom:  80rpx;}
