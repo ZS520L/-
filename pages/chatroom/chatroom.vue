@@ -20,8 +20,8 @@
 					<input class="uni-input" :value="myMessage" placeholder="说点什么..." @input="handleInputMessage" />
 					<view class="uni-btn" @click="sendMessage(0,myMessage)">↑</view>
 				</view>
-				<image class="heart" @click="handleHeart" src="../../static/images/handle-heart.png"></image>
-				<image class="rocket" @click="handleRocket" src="../../static/images/rokect.png"></image>
+				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
+				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
 			</view>
 		</view>
 		<view class="show-animation" v-show="prop.show">
@@ -53,7 +53,7 @@
 						avatar : avatar
 					}
 				},
-				currentUserMsg : {
+				currentUser : {
 					senderNickname : "",
 					senderUserId : null,
 					type : 0,
@@ -68,8 +68,6 @@
 					imgUrl : ''
 				},
 				propTimer : null,
-				throttlePrev : Date.now(),
-				throttleTimer : null,
 				myService : null
 			}
 		},
@@ -78,12 +76,14 @@
 			//获取数据
 			var loginCommand = JSON.parse(options.index);
 			//保存当前用户
-			this.currentUserMsg = {
+			this.currentUser = {
 				senderUserId : (Math.random() * 1000).toString(),
 				senderNickname : loginCommand.nickname
 			};
 			//保存当前房间id
 			this.currentRoomId = loginCommand.roomId;
+			
+			//设置导航标题
 			uni.setNavigationBarTitle({
 			    title: loginCommand.roomName
 			});
@@ -95,11 +95,12 @@
 				return item;
 			});
 			
-			this.myService = new MyService({
-				// appkey :'BC-cb2b54aa56b948bfad5e971970681d6e',
-				appkey : 'BC-ede22e1d66834d838fe1dee6709c4dc3'
-			},{
-				//todo 所有的逻辑回调
+			let config = {
+				appkey : '您的key',
+				host : 'hangzhou.goeasy.io'
+			};
+			
+			let callback = {
 				onConnectFailed : this.onConnectFailed,
 				onHereNowSuccess : this.onHereNowSuccess,
 				onHereNowFailed : this.onHereNowFailed,
@@ -107,11 +108,14 @@
 				onPresenceOffline : this.onPresenceOffline,
 				onPresenceFailed : this.onPresenceFailed,
 				onMessageSuccess : this.onMessageSuccess,
-				// saveChatMessage : this.uniSaveChatMessage,
+				saveChatMessage : this.uniSaveChatMessage,
 				onPublishSuccess : this.onPublishSuccess
-			});
-			this.myService.initGoeasy(this.user(this.currentUserMsg.senderUserId, this.currentUserMsg.senderNickname, loginCommand.avatar));
-			this.myService.initialOnlineUsers([loginCommand.roomId]);
+			};
+			let user = this.user(this.currentUser.senderUserId, this.currentUser.senderNickname, loginCommand.avatar)
+			
+			this.myService = new MyService(config,callback);
+			this.myService.initGoeasy(user);
+			this.myService.initialOnlineUsers(loginCommand.roomId);
 			this.myService.subscriberPresence(loginCommand.roomId);
 			this.myService.subscriberNewMessage(loginCommand.roomId)
 		},
@@ -138,8 +142,7 @@
 			},
 			onHereNowFailed (code) {//初始化onlineUsers对象 其他状态码
 				if(code == 401) {
-					let msg = "您还没有高级功能的权限，付费用户请联系GoEasy开通";
-					this.showUniToast(msg)
+					this.onPresenceFailed()
 				}
 			},
 			onPresenceOnline (res) {//用户上线监听
@@ -169,9 +172,8 @@
 			},
 			onMessageSuccess (res) {//监听消息 成功
 				//显示消息 0 表示文字消息，1为道具
-				console.log(res.type)
 				if (res.type == 0) {
-					let selfSent = res.senderUserId == this.currentUserMsg.senderUserId;
+					let selfSent = res.senderUserId == this.currentUser.senderUserId;
 					this.onNewMessage(res, selfSent);
 				}
 				if (res.type == 1) {
@@ -207,20 +209,12 @@
 			},
 			sendMessage (messageType, content) {//发送消息
 				if(content == "" && messageType == 0) return;
-				this.currentUserMsg.type = messageType;
-				this.currentUserMsg.content = content;
-				this.myService.publish(this.currentRoomId, this.currentUserMsg)
+				this.currentUser.type = messageType;
+				this.currentUser.content = content;
+				this.myService.publish(this.currentRoomId, this.currentUser)
 			},
 			onPublishSuccess () {//发送成功回调
 				this.myMessage = ""
-			},
-			handleHeart () {//比心
-				//比心
-				this.throttle(this.sendMessage.bind(this,1,0),2000)
-			},
-			handleRocket(){//发送火箭
-				//火箭
-				this.throttle(this.sendMessage.bind(this,1,1),2000)
 			},
 			handleProps (type) {//道具动画
 				//动画的实现，可以不用关心
@@ -257,19 +251,6 @@
 					}
 				},1800)
 			},
-			throttle (func, delay) {//节流函数
-				//动画的性能处理，和goeasy实现没有联系，可以不用关心
-				var now = Date.now();
-				
-				var remaining = delay - (now - this.throttlePrev);
-				clearTimeout(this.throttleTimer);
-				if(remaining <= 0){
-					func();
-					this.throttlePrev = Date.now();
-				}else {
-					this.throttleTimer = setTimeout(func,remaining)
-				}
-			},
 			handleInputMessage (event) {//双向绑定消息 兼容
 				this.myMessage = event.target.value;
 			},
@@ -279,32 +260,32 @@
 					zIndex : 100-key
 				}
 			},
-			uniSaveChatMessage (uni ,roomId, chatMessage) {//uniapp缓存方式
-			    // let localStorageKey = 'room_' + roomId;
-			    // let arr = [];
-			    // try {
-			    //     const jsonStr = uni.getStorageSync(localStorageKey);
-			    //     if (jsonStr) {
-			    //         arr = [chatMessage,...JSON.parse(jsonStr)]
-			    //     }
-			    //     uni.setStorageSync(localStorageKey,JSON.stringify(arr))
-			    // }catch(e) {
-			    //     console.log(e)
-			    // }
+			uniSaveChatMessage (roomId, chatMessage) {//uniapp缓存方式
+			    let localStorageKey = 'room_' + roomId;
+			    let arr = [];
+			    try {
+			        const jsonStr = uni.getStorageSync(localStorageKey);
+			        if (jsonStr) {
+			            arr = [chatMessage,...JSON.parse(jsonStr)]
+			        }
+			        uni.setStorageSync(localStorageKey,JSON.stringify(arr))
+			    }catch(e) {
+			        console.log(e)
+			    }
 			},
 			
-			uniFindChatHistory(uni, roomId) {
-			    // let localStorageKey = 'room_' + roomId;
-			    // let arr = [];
-			    // try{
-			    //     var jsonStr = uni.getStorageSync(localStorageKey);
-			    //     if(jsonStr){
-			    //         arr = JSON.parse(jsonStr)
-			    //     }
-			    // }catch(e) {
-			    //     console.log(e)
-			    // }
-			    // return arr;
+			uniFindChatHistory(roomId) {
+			    let localStorageKey = 'room_' + roomId;
+			    let arr = [];
+			    try{
+			        var jsonStr = uni.getStorageSync(localStorageKey);
+			        if(jsonStr){
+			            arr = JSON.parse(jsonStr)
+			        }
+			    }catch(e) {
+			        console.log(e)
+			    }
+			    return arr;
 				return [];
 			}
 		}
