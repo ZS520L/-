@@ -1,24 +1,24 @@
 <template>
 	<view class="chat-room">
 		<view class="online-avatar-container">
-			<view class="online-avatar-item" v-for="(value, key) in onlineUsers.users" :key="key" :style="realignAvatar(key)">
+			<view class="online-avatar-item" v-for="(value, key) in room.onlineUsers.users" :key="key" :style="realignAvatar(key)">
 				<image :src="value.avatar" class="online-avatar-img"></image>
 			</view>
-			<text class="online-count">{{onlineUsers.count}}</text>
+			<text class="online-count">{{room.onlineUsers.count}}</text>
 		</view>
 		<view class="chat-room-container">
 			<scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="contentPosition" show-scrollbar="true">
-				<view class="message-box" v-for="(message, key) in messages" :key="key" :id="'message-box'+ key">
+				<view class="message-box" v-for="(message, key) in room.messages" :key="key" :id="'message-box'+ key">
 					<view class="message-item">
 						<text class="user-name">{{message && message.senderNickname}}: </text>
-						<text :class="message.senderUserId == currentUser.id ? 'user-message self' : 'user-message' ">{{message && message.content}}</text>
+						<text :class="message.senderUserId == room.currentUser.id ? 'user-message self' : 'user-message' ">{{message && message.content}}</text>
 					</view>
 				</view>
 			</scroll-view>
 			<view class="chat-room-input">
 				<view style="position: relative;">
-					<input class="uni-input" v-model="newMessage.content" placeholder="说点什么..." />
-					<text class="uni-btn" @click="sendMessage(0,newMessage.content)">↑</text>
+					<input class="uni-input" v-model="currentUserMessage" placeholder="说点什么..." />
+					<text class="uni-btn" @click="sendMessage(0,currentUserMessage)">↑</text>
 				</view>
 				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
 				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
@@ -38,128 +38,53 @@
 	export default {
 		data () {
 			return {
-				roomId : null,
-				onlineUsers : {
-					count :0,
-					users : []
-				},
-				currentUser : {
-					nickname : "",
-					id : null,
-					avatar : ""
-				},
-				messages : [],
-				newMessage : {
-					type : 0,
-					content : ""
-				},
+				currentUserMessage : "",
+				room : null,
 				contentPosition : '',
 				showProp : false,
 				showAnimation : false,
 				chatRoomService : null,
-				propTimer : null
 			}
 		},
 		onLoad(options) {
 			//获取数据
 			var roomToken = JSON.parse(options.roomToken);
-
-			// //保存当前房间id
-			this.roomId = roomToken.roomId;
 			
-			// //设置导航标题
+			//设置导航标题
 			uni.setNavigationBarTitle({
 				title: roomToken.roomName
 			});
 
-			// //保存当前用户
-			this.currentUser = {
-				id : roomToken.userId,
-				nickname : roomToken.nickname,
-				avatar: roomToken.avatar
-			};
+			//构造chatRoomService
+			this.chatRoomService = new ChatRoomService(roomToken.roomId, {
+			    id : roomToken.userId,
+                nickname : roomToken.nickname,
+                avatar: roomToken.avatar
+			});
 
-			// //构造chatRoomService
-			this.chatRoomService = new ChatRoomService(this.currentUser);
-
-			this.chatRoomService.loadOnlineUsers(this.roomId, this.onLoadOnlineUser)
-			this.chatRoomService.listenUserOnlineOffline(this.roomId, this.onUserOnline, this.onUserOffline);
-			this.chatRoomService.listenNewMessage(this.roomId, this.onNewMessage, this.onNewProp);
-
-			this.messages = this.chatRoomService.loadChatMessages(this.roomId)
+            this.room = this.chatRoomService.room;
 		},
 		onBackPress () {//返回取消订阅
 			//断开连接
-			this.chatRoomService.quitRoom(this.roomId);
+			this.chatRoomService.quitRoom(this.room.id);
 		},
 		methods: {
-			onLoadOnlineUser (onlineUsers) {//初始化onlineUsers
-				this.onlineUsers.users = onlineUsers.users;
-				this.onlineUsers.count = onlineUsers.count;
-			},
-			onUserOnline (user, count) {//用户上线
-				console.log(user)
-				this.onlineUsers.users.push(user)
-				this.onlineUsers.count = count;
-				this.onNewMessage({
-					senderNickname : user.nickname,
-					content : '进入房间'
-				});
-			},
-			onUserOffline (user, count) {//用户下线
-				//user未返回nickName
-				let offlineUserIndex = this.onlineUsers.users.findIndex(item => item.id == user.id);
-				if(offlineUserIndex>-1) {
-					//将离开的用户从onlineUsers中删掉
-					let offlineUser = Object.assign(this.onlineUsers.users[offlineUserIndex]);
-					this.onlineUsers.users.splice(offlineUserIndex, 1);
-					this.onlineUsers.count = count;
-					this.onNewMessage({
-						senderNickname : offlineUser.nickname,
-						content : '退出房间'
-					});
-				}
-			},
-			realignAvatar (key) {//头像位置
+    		realignAvatar (key) {//头像位置
 				return {
 					right: key*54 + 108 +'rpx',
 					zIndex : 100-key
 				}
 			},
-			onNewMessage(message) {//收到消息
-				console.log(message)
-				this.messages.push(message)
-				//滚动到对应位置
-				setTimeout(() => {
-					this.contentPosition = 'message-box'+(this.messages.length-1);
-				}, 300)
-			},
-			onNewProp (res) {//收到道具 0为比心 1为火箭
-				if (res.content == 1) {
-					this.propAnimation.call(res,'rocket')
-					this.onNewMessage({
-						senderNickname : res.senderNickname,
-						content : '送出了一枚大火箭'
-					});
-				}
-				if (res.content == 0) {
-					this.propAnimation.call(this,'heart')
-					this.onNewMessage({
-						senderNickname : res.senderNickname,
-						content : '送出了一个大大的比心'
-					});
-				}
-			},
 			sendMessage (messageType, content) {//发送消息
 				if(content == "" && messageType == 0) return;
 				var message = {
-					senderNickname : this.currentUser.nickname ,
-					senderUserId : this.currentUser.id,
+					senderNickname : this.room.currentUser.nickname ,
+					senderUserId : this.room.currentUser.id,
 					type : messageType,
 					content : content
 				}
-				this.chatRoomService.sendMessages(this.roomId, message);
-				this.newMessage.content = ""
+				this.chatRoomService.sendMessages(this.room.id, message);
+				this.currentUserMessage = ""
 			},
 			
 			propAnimation (type) {//道具动画

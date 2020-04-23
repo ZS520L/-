@@ -1,32 +1,32 @@
 {
 	"pages": [
 		//vue 版本，切换时可对应注释
-		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationBarTitleText": "GoEasy登录"
-			}
-		},
-		{
-			"path": "pages/chatroom/chatroom",
-			"style": {
-				"navigationBarTitleText": "GoEasy直播间"
-			}
-		}
-		//nvue版本
-		// ,
 		// {
-		// 	"path": "pages/nvueindex/nvueindex",
+		// 	"path": "pages/index/index",
 		// 	"style": {
 		// 		"navigationBarTitleText": "GoEasy登录"
 		// 	}
 		// },
 		// {
-		// 	"path": "pages/nvuechatroom/nvuechatroom",
+		// 	"path": "pages/chatroom/chatroom",
 		// 	"style": {
 		// 		"navigationBarTitleText": "GoEasy直播间"
 		// 	}
 		// }
+		//nvue版本
+		// ,
+		{
+			"path": "pages/nvueindex/nvueindex",
+			"style": {
+				"navigationBarTitleText": "GoEasy登录"
+			}
+		},
+		{
+			"path": "pages/nvuechatroom/nvuechatroom",
+			"style": {
+				"navigationBarTitleText": "GoEasy直播间"
+			}
+		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "white",
