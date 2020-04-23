@@ -18,7 +18,7 @@
 					<view 
 					:class="avatarActiveKey == key ? 'avatar-box-item active' : 'avatar-box-item '" 
 					v-for="(value, key) in avatarList" :key="key" 
-					@click="handleSelectAvatar(key, value.imgUrl)">
+					@click="handleSelectAvatar(value)">
 						<image :src="value.imgUrl"></image>
 					</view>
 				</view>
@@ -28,9 +28,9 @@
 				<view class="room-box">
 					<text 
 					class="room-box-item" 
-					v-for="(value, key) in roomList" 
-					:key="key"
-					@click="handleLogin(value)">{{value.name}}</text>
+					v-for="(room, key) in roomList"
+					:key="value.roomId"
+					@click="handleLogin(room)">{{value.name}}</text>
 				</view>
 			</view>
 		</view>
@@ -42,14 +42,14 @@
 		data() {
 			return {
 				avatarList : [
-					{imgUrl :'../../static/images/1.png'},
-					{imgUrl :'../../static/images/2.png'},
-					{imgUrl :'../../static/images/3.png'},
-					{imgUrl :'../../static/images/4.png'},
-					{imgUrl :'../../static/images/5.png'},
-					{imgUrl :'../../static/images/6.png'},
-					{imgUrl :'../../static/images/7.png'},
-					{imgUrl :'../../static/images/8.png'}
+					{id:'1',imgUrl :'../../static/images/1.png'},
+					{id:'2',imgUrl :'../../static/images/2.png'},
+					{id:'3',imgUrl :'../../static/images/3.png'},
+					{id:'4',imgUrl :'../../static/images/4.png'},
+					{id:'5',imgUrl :'../../static/images/5.png'},
+					{id:'6',imgUrl :'../../static/images/6.png'},
+					{id:'7',imgUrl :'../../static/images/7.png'},
+					{id:'8',imgUrl :'../../static/images/8.png'}
 				],
 				roomList : [
 					{roomId:"001", name:"程序员集散地"},
@@ -57,12 +57,16 @@
 					{roomId:"003", name:"驴友之家"},
 					{roomId:"004", name:"球迷乐翻天"}
 				],
-				roomId :null,
-				roomName : '',
 				nickname : '',
-				avatar : '',
-				avatarActiveKey : -1
-				
+				selectedAvatar:{
+					imgUrl: '',
+					id: ''
+				},
+				selectedRoom:{
+					roomId :null,
+					roomName : '',
+				}
+
 			}
 		},
 		onShow () {
@@ -72,11 +76,10 @@
 			onInputUserName(event) {// 输入用户名
 				this.nickname = event.target.value;
 			},
-			handleSelectAvatar (key, imgUrl) {//选择头像
-				this.avatarActiveKey = key;
-				this.avatar = imgUrl;
+			onSelectAvatar (avtar) {//选择头像
+				this.selectedAvatar = avtar;
 			},
-			handleLogin(value) {//登录
+			onSelectRoom(value) {//登录
 				if(this.avatar == "" || this.nickname  == "") {
 					uni.showToast({
 						title:"请输入昵称，并选择头像",

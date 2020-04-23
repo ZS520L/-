@@ -92,11 +92,12 @@
 			this.chatRoomService.quitRoom(this.roomId);
 		},
 		methods: {
-			loadOnlineUserCallback (res) {//初始化onlineUsers
-				this.onlineUsers.users = res.onlineUsers;
-				this.onlineUsers.count = res.onlineUserCount;
+
+			loadOnlineUserCallback (onlineUsers) {//初始化onlineUsers
+				this.onlineUsers.users = onlineUsers.users;
+				this.onlineUsers.count = onlineUsers.count;
 			},
-			userOnlineCallback (res) {//用户上线
+			onUserOnline (onlineUser) {//用户上线
 				this.onlineUsers.users.push(res.onlineUser)
 				this.onlineUsers.count = res.onlineUserCount
 				this.onNewMessage({
@@ -110,17 +111,42 @@
 					//将离开的用户从onlineUsers中删掉
 					let offlineUser = Object.assign(this.onlineUsers.users[offlineUserIndex]);
 					this.onlineUsers.users.splice(offlineUserIndex, 1);
-					this.onlineUsers.count--;
+					this.onlineUsers.count = res.onlineUserCount
 					this.onNewMessage({
 						senderNickname : offlineUser.nickname,
 						content : '退出房间'
 					},false);
 				}
 			},
+
+
+			realignAvatar (key) {//头像位置
+				return {
+					right: key*54 + 108 +'rpx',
+					zIndex : 100-key
+				}
+			}
+
+			onInputMessage (event) {//双向绑定消息 兼容
+				this.newMessage.content = event.target.value;
+			},
+			onPublishSuccess () {//发送成功回调
+				this.newMessage.content = ""
+			},
+
 			newMessageCallback(res) {//收到消息
 				let selfSent = res.senderUserId == this.currentUser.senderUserId;
 				this.onNewMessage(res, selfSent);
+				this.messages.push({
+					content : content,
+					selfSent : selfSent
+				})
+				//滚动到对应位置
+				setTimeout(() => {
+					this.contentPosition = 'message-box'+(this.messages.length-1);
+				}, 300)
 			},
+
 			newPropCallback (res) {//收到道具 0为比心 1为火箭
 				if (res.content == 1) {
 					this.handleProps.call(res,'rocket')
@@ -137,29 +163,6 @@
 					},false);
 				}
 			},
-			onNewMessage (content, selfSent) {//收到新消息处理
-				this.messages.push({
-					content : content,
-					selfSent : selfSent
-				})
-				//滚动到对应位置
-				setTimeout(() => {
-					this.contentPosition = 'message-box'+(this.messages.length-1);
-				}, 300)
-			},
-			sendMessage (messageType, content) {//发送消息
-				if(content == "" && messageType == 0) return;
-				var newMessageContainer = {
-					senderNickname : this.currentUser.nickname ,
-					senderUserId : this.currentUser.userId,
-					type : messageType,
-					content : content
-				}
-				this.chatRoomService.sendMessages(this.roomId, newMessageContainer)
-			},
-			onPublishSuccess () {//发送成功回调
-				this.newMessage.content = ""
-			},
 			handleProps (type) {//道具动画
 				//动画的实现，可以不用关心
 				if(this.propTimer) {
@@ -172,15 +175,19 @@
 					this.propTimer = null;
 				},2000)
 			},
-			handleInputMessage (event) {//双向绑定消息 兼容
-				this.newMessage.content = event.target.value;
-			},
-			countPosition (key) {//头像位置
-				return {
-					right: key*54 + 108 +'rpx',
-					zIndex : 100-key
+
+			sendMessage (messageType, content) {//发送消息
+				if(content == "" && messageType == 0) return;
+				var message = {
+					senderNickname : this.currentUser.nickname ,
+					senderUserId : this.currentUser.userId,
+					type : messageType,
+					content : content
 				}
-			}
+				this.chatRoomService.sendMessages(this.roomId, newMessageContainer)
+			},
+
+
 		}
 	}
 </script>
