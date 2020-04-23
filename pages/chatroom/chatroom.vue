@@ -7,8 +7,8 @@
 			<view class="online-count">{{onlineUsers.count}}</view>
 		</view>
 		<view class="chat-room-container">
-			<scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="scrollIntoViewKey" show-scrollbar="true">
-				<view class="message-box" v-for="(value, key) in chatMessage" :key="key" :id="'message-box'+ key">
+			<scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="contentPosition" show-scrollbar="true">
+				<view class="message-box" v-for="(value, key) in messages" :key="key" :id="'message-box'+ key">
 					<view class="message-item">
 						<text class="user-name">{{value.content && value.content.senderNickname}}: </text>
 						<text :class="value.selfSent ? 'user-message self' : 'user-message' ">{{value.content && value.content.content}}</text>
@@ -17,8 +17,8 @@
 			</scroll-view>
 			<view class="chat-room-input">
 				<view style="position: relative;">
-					<input class="uni-input" :value="myMessage" placeholder="说点什么..." @input="handleInputMessage" />
-					<view class="uni-btn" @click="sendMessage(0,myMessage)">↑</view>
+					<input class="uni-input" :value="newMessage.content" placeholder="说点什么..." @input="handleInputMessage" />
+					<view class="uni-btn" @click="sendMessage(0,newMessage.content)">↑</view>
 				</view>
 				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
 				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
@@ -32,86 +32,71 @@
 </template>
 
 <script>
-	const MyService  = require('lib/service.js')
+	import ChatRoomService from 'lib/service';
 	export default {
 		data () {
 			return {
+				roomId : null,
 				onlineUsers : {
-					count :1,
+					count :0,
 					users : []
 				},
-				chatMessage : [],
-				user : function (id,nickname,avatar) {
-					return {
-						id : id,
-						nickname : nickname,
-						avatar : avatar
-					}
-				},
 				currentUser : {
-					senderNickname : "",
-					senderUserId : null,
-					type : 0,
-					content : null
+					nickname : "",
+					userId : null,
+					avatar : ""
 				},
-				currentRoomId : null,
-				myMessage : '',
-				scrollIntoViewKey : '',
-				showHeart : false,
+				messages : [],
+				newMessage : {
+					type : 0,
+					content : ""
+				},
+				contentPosition : '',
+				showProp : false,
 				showAnimation : false,
-				myService : null,
+				chatRoomService : null,
 				propTimer : null
 			}
 		},
 		onLoad(options) {	
 			//获取数据
-			var loginCommand = JSON.parse(options.index);
-			//保存当前用户
-			this.currentUser = {
-				senderUserId : (Math.random() * 1000).toString(),
-				senderNickname : loginCommand.nickname
-			};
+			var roomToken = JSON.parse(options.roomToken);
+
 			//保存当前房间id
-			this.currentRoomId = loginCommand.roomId;
+			this.roomId = roomToken.roomId;
 			
 			//设置导航标题
 			uni.setNavigationBarTitle({
-			    title: loginCommand.roomName
+			    title: roomToken.roomName
 			});
-			//获取历史消息
-			this.chatMessage = this.uniFindChatHistory(loginCommand.roomId).map(item => {
-				if(typeof item.content == 'string') {
-					item.content = JSON.parse(item.content)
-				}
-				return item;
-			});
-			
-			let callback = {
-				onHereNowSuccess : this.onHereNowSuccess,
-				onPresenceOnline : this.onPresenceOnline,
-				onPresenceOffline : this.onPresenceOffline,
-				onMessageSuccess : this.onMessageSuccess,
-				saveChatMessage : this.uniSaveChatMessage,
-				onPublishSuccess : this.onPublishSuccess
+
+			//保存当前用户
+			this.currentUser = {
+				id : roomToken.userId,
+				nickname : roomToken.nickname,
+				avatar: roomToken.avatar
 			};
-			let user = this.user(this.currentUser.senderUserId, this.currentUser.senderNickname, loginCommand.avatar)
-			
-			//构造myservice
-			this.myService = new MyService(callback);
-			//初始化service
-			this.myService.initGoeasy(user, loginCommand.roomId);
-			
+
+			//构造chatRoomService
+			this.chatRoomService = new ChatRoomService(this.currentUser, uni);
+
+			this.chatRoomService.loadOnlineUsers(this.roomId, this.loadOnlineUserCallback)
+			this.chatRoomService.listenUserOnlineOffline(this.roomId, this.userOnlineCallback, this.userOfflineCallback);
+			this.chatRoomService.listenNewMessage(this.roomId, this.newMessageCallback, this.newPropCallback);
+
+			this.messages = this.chatRoomService.loadChatMessages(this.roomId)
+
 		},
 		onBackPress () {//返回按钮
 			//断开连接
-			this.myService.disconnect(this.currentRoomId);
+			this.chatRoomService.quitRoom(this.roomId);
 		},
 		methods: {
-			onHereNowSuccess (res) {//初始化onlineUsers对象 成功
+			loadOnlineUserCallback (res) {//初始化onlineUsers
 				this.onlineUsers.users = res.onlineUsers;
 				this.onlineUsers.count = res.onlineUserCount;
 			},
-			onPresenceOnline (res) {//用户上线监听
+			userOnlineCallback (res) {//用户上线
 				this.onlineUsers.users.push(res.onlineUser)
 				this.onlineUsers.count = res.onlineUserCount
 				this.onNewMessage({
@@ -119,7 +104,7 @@
 					content : '进入房间'
 				},false);
 			},
-			onPresenceOffline (res) {//用户下线 监听
+			userOfflineCallback (res) {//用户下线
 				let offlineUserIndex = this.onlineUsers.users.findIndex(item => item.id == event.userId);
 				if(offlineUserIndex>-1) {
 					//将离开的用户从onlineUsers中删掉
@@ -132,49 +117,48 @@
 					},false);
 				}
 			},
-			onMessageSuccess (res) {//监听消息 成功
-				//显示消息 0 表示文字消息，1为道具
-				if (res.type == 0) {
-					let selfSent = res.senderUserId == this.currentUser.senderUserId;
-					this.onNewMessage(res, selfSent);
+			newMessageCallback(res) {//收到消息
+				let selfSent = res.senderUserId == this.currentUser.senderUserId;
+				this.onNewMessage(res, selfSent);
+			},
+			newPropCallback (res) {//收到道具 0为比心 1为火箭
+				if (res.content == 1) {
+					this.handleProps.call(res,'rocket')
+					this.onNewMessage({
+						senderNickname : res.senderNickname,
+						content : '送出了一枚大火箭'
+					},false);
 				}
-				if (res.type == 1) {
-					//0为比心 1为火箭
-					if (res.content == 1) {
-						this.handleProps.call(res,'rocket')
-						this.onNewMessage({
-							senderNickname : res.senderNickname,
-							content : '送出了一枚大火箭'
-						},false);
-	
-					}
-					if (res.content == 0) {
-						this.handleProps.call(this,'heart')
-						this.onNewMessage({
-							senderNickname : res.senderNickname,
-							content : '送出了一个大大的比心'
-						},false);
-					}
+				if (res.content == 0) {
+					this.handleProps.call(this,'heart')
+					this.onNewMessage({
+						senderNickname : res.senderNickname,
+						content : '送出了一个大大的比心'
+					},false);
 				}
 			},
 			onNewMessage (content, selfSent) {//收到新消息处理
-				this.chatMessage.push({
+				this.messages.push({
 					content : content,
 					selfSent : selfSent
 				})
 				//滚动到对应位置
 				setTimeout(() => {
-					this.scrollIntoViewKey = 'message-box'+(this.chatMessage.length-1);
+					this.contentPosition = 'message-box'+(this.messages.length-1);
 				}, 300)
 			},
 			sendMessage (messageType, content) {//发送消息
 				if(content == "" && messageType == 0) return;
-				this.currentUser.type = messageType;
-				this.currentUser.content = content;
-				this.myService.publish(this.currentRoomId, this.currentUser)
+				var newMessageContainer = {
+					senderNickname : this.currentUser.nickname ,
+					senderUserId : this.currentUser.userId,
+					type : messageType,
+					content : content
+				}
+				this.chatRoomService.sendMessages(this.roomId, newMessageContainer)
 			},
 			onPublishSuccess () {//发送成功回调
-				this.myMessage = ""
+				this.newMessage.content = ""
 			},
 			handleProps (type) {//道具动画
 				//动画的实现，可以不用关心
@@ -189,40 +173,13 @@
 				},2000)
 			},
 			handleInputMessage (event) {//双向绑定消息 兼容
-				this.myMessage = event.target.value;
+				this.newMessage.content = event.target.value;
 			},
 			countPosition (key) {//头像位置
 				return {
 					right: key*54 + 108 +'rpx',
 					zIndex : 100-key
 				}
-			},
-			uniSaveChatMessage (roomId, chatMessage) {//uniapp缓存方式
-			    let localStorageKey = 'room_' + roomId;
-			    let arr = [];
-			    try {
-			        const jsonStr = uni.getStorageSync(localStorageKey);
-			        if (jsonStr) {
-			            arr = [chatMessage,...JSON.parse(jsonStr)]
-			        }
-			        uni.setStorageSync(localStorageKey,JSON.stringify(arr))
-			    }catch(e) {
-			        console.log(e)
-			    }
-			},
-			
-			uniFindChatHistory(roomId) {//uniapp 查找缓存
-			    let localStorageKey = 'room_' + roomId;
-			    let arr = [];
-			    try{
-			        var jsonStr = uni.getStorageSync(localStorageKey);
-			        if(jsonStr){
-			            arr = JSON.parse(jsonStr)
-			        }
-			    }catch(e) {
-			        console.log(e)
-			    }
-			    return arr;
 			}
 		}
 	}

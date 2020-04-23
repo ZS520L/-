@@ -5,20 +5,20 @@
 			<text class="title">聊天室（直播间）</text>
 		</view>
 		<view class="content">
-			<input :class='showUserNameNotice ? "input-notice uni-input" : "uni-input"'
-			:value="loginCommand.nickname" 
+			<input :class='nickname == "" ? "input-notice uni-input" : "uni-input"'
+			:value="nickname" 
 			placeholder="请输入昵称" 
 			@input="onInputUserName">
 			<view class="avatar-container">
 				<view class="avatar-notice">
 					<text>请选择头像</text>
-					<text class="avatar-notice-info" v-if="showAvatarNotice">请选一个头像哦!!!</text>
+					<text class="avatar-notice-info" v-if="avatar ==''">请选一个头像哦!!!</text>
 				</view>
 				<view class="avatar-box">
 					<view 
 					:class="avatarActiveKey == key ? 'avatar-box-item active' : 'avatar-box-item '" 
 					v-for="(value, key) in avatarList" :key="key" 
-					@click="handleCheckAvatar(key, value.imgUrl)">
+					@click="handleSelectAvatar(key, value.imgUrl)">
 						<image :src="value.imgUrl"></image>
 					</view>
 				</view>
@@ -41,15 +41,6 @@
 	export default {
 		data() {
 			return {
-				showAvatarNotice : true,
-				showUserNameNotice : true,
-				avatarActiveKey : -1,
-				loginCommand : {
-					avatar : '',
-					roomId :null,
-					roomName : '',
-					nickname : ''
-				},
 				avatarList : [
 					{imgUrl :'../../static/images/1.png'},
 					{imgUrl :'../../static/images/2.png'},
@@ -65,7 +56,13 @@
 					{roomId:"002", name:"舌尖上的中国"},
 					{roomId:"003", name:"驴友之家"},
 					{roomId:"004", name:"球迷乐翻天"}
-				]
+				],
+				roomId :null,
+				roomName : '',
+				nickname : '',
+				avatar : '',
+				avatarActiveKey : -1
+				
 			}
 		},
 		onShow () {
@@ -73,16 +70,14 @@
 		},
 		methods: {
 			onInputUserName(event) {// 输入用户名
-				this.loginCommand.nickname = event.target.value;
-				this.showUserNameNotice = this.loginCommand.nickname .trim() == "" ? true : false;
+				this.nickname = event.target.value;
 			},
-			handleCheckAvatar (key, imgUrl) {//选择头像
+			handleSelectAvatar (key, imgUrl) {//选择头像
 				this.avatarActiveKey = key;
-				this.showAvatarNotice = false;
-				this.loginCommand.avatar = imgUrl;
+				this.avatar = imgUrl;
 			},
 			handleLogin(value) {//登录
-				if(this.showAvatarNotice || this.loginCommand.nickname  == "") {
+				if(this.avatar == "" || this.nickname  == "") {
 					uni.showToast({
 						title:"请输入昵称，并选择头像",
 						duration:2000,
@@ -90,11 +85,16 @@
 					});
 					return
 				}
-				this.loginCommand.roomId = value.roomId;
-				this.loginCommand.roomName = value.name;
-				var params = JSON.stringify(this.loginCommand)
+				this.roomToken = {
+					roomId: value.roomId,
+					roomName:value.name,
+					userId:(Math.random() * 1000).toString(),
+					nickname:this.nickname,
+					avatar:this.avatar
+				};
+				let roomTokenAsJsonString = JSON.stringify(this.roomToken)
 				uni.navigateTo({
-					url:"/pages/chatroom/chatroom?index=" + params
+					url:"/pages/chatroom/chatroom?roomToken=" + roomTokenAsJsonString
 				})
 			}
 		}
