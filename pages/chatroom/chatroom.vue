@@ -78,7 +78,7 @@
 			};
 
 			//构造chatRoomService
-			this.chatRoomService = new ChatRoomService(this.currentUser, uni);
+			this.chatRoomService = new ChatRoomService(this.currentUser);
 
 			this.chatRoomService.loadOnlineUsers(this.roomId, this.onLoadOnlineUser)
 			this.chatRoomService.listenUserOnlineOffline(this.roomId, this.onUserOnline, this.onUserOffline);
