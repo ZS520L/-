@@ -2,9 +2,9 @@
 	<view class="chat-room">
 		<view class="online-avatar-container">
 			<view class="online-avatar-item" v-for="(value, key) in onlineUsers.users" :key="key" :style="realignAvatar(key)">
-				<image :src="value.avatar"></image>
+				<image :src="value.avatar" class="online-avatar-img"></image>
 			</view>
-			<view class="online-count">{{onlineUsers.count}}</view>
+			<text class="online-count">{{onlineUsers.count}}</text>
 		</view>
 		<view class="chat-room-container">
 			<scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="contentPosition" show-scrollbar="true">
@@ -17,22 +17,24 @@
 			</scroll-view>
 			<view class="chat-room-input">
 				<view style="position: relative;">
-					<input class="uni-input" :value="newMessage.content" placeholder="说点什么..." @input="onInputMessage" />
-					<view class="uni-btn" @click="sendMessage(0,newMessage.content)">↑</view>
+					<input class="uni-input" v-model="newMessage.content" placeholder="说点什么..." />
+					<text class="uni-btn" @click="sendMessage(0,newMessage.content)">↑</text>
 				</view>
 				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
 				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
 			</view>
 		</view>
-		<view class="show-animation" v-if="prop.showAnimation">
-			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="prop.showHeart"></image>
-			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="!prop.showHeart"></image>
+		<view :class="showAnimation ? 'show-animation' : 'show-animation hidden'" ref="myanimation">
+			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="showProp"></image>
+			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="!showProp"></image>
 		</view>
 	</view>
 </template>
 
 <script>
-	import ChatRoomService from 'lib/service';
+	const ChatRoomService =require('../../lib/chatRoomService');
+	// const animation = weex.requireModule('animation');
+	// const dom = weex.requireModule('dom');
 	export default {
 		data () {
 			return {
@@ -51,36 +53,33 @@
 					type : 0,
 					content : ""
 				},
-				prop : {
-					showHeart : false,
-					showAnimation : false,
-					timer : null
-				},
 				contentPosition : '',
-				chatRoomService : null
-				
+				showProp : false,
+				showAnimation : false,
+				chatRoomService : null,
+				propTimer : null
 			}
 		},
-		onLoad(options) {	
+		onLoad(options) {
 			//获取数据
 			var roomToken = JSON.parse(options.roomToken);
 
-			//保存当前房间id
+			// //保存当前房间id
 			this.roomId = roomToken.roomId;
 			
-			//设置导航标题
+			// //设置导航标题
 			uni.setNavigationBarTitle({
-			    title: roomToken.roomName
+				title: roomToken.roomName
 			});
 
-			//保存当前用户
+			// //保存当前用户
 			this.currentUser = {
 				id : roomToken.userId,
 				nickname : roomToken.nickname,
 				avatar: roomToken.avatar
 			};
 
-			//构造chatRoomService
+			// //构造chatRoomService
 			this.chatRoomService = new ChatRoomService(this.currentUser);
 
 			this.chatRoomService.loadOnlineUsers(this.roomId, this.onLoadOnlineUser)
@@ -88,19 +87,18 @@
 			this.chatRoomService.listenNewMessage(this.roomId, this.onNewMessage, this.onNewProp);
 
 			this.messages = this.chatRoomService.loadChatMessages(this.roomId)
-
 		},
-		onBackPress () {//返回按钮
+		onBackPress () {//返回取消订阅
 			//断开连接
 			this.chatRoomService.quitRoom(this.roomId);
 		},
 		methods: {
-
 			onLoadOnlineUser (onlineUsers) {//初始化onlineUsers
 				this.onlineUsers.users = onlineUsers.users;
 				this.onlineUsers.count = onlineUsers.count;
 			},
 			onUserOnline (user, count) {//用户上线
+				console.log(user)
 				this.onlineUsers.users.push(user)
 				this.onlineUsers.count = count;
 				this.onNewMessage({
@@ -122,17 +120,14 @@
 					});
 				}
 			},
-
 			realignAvatar (key) {//头像位置
 				return {
 					right: key*54 + 108 +'rpx',
 					zIndex : 100-key
 				}
 			},
-			onInputMessage (event) {//双向绑定消息 兼容
-				this.newMessage.content = event.target.value;
-			},
 			onNewMessage(message) {//收到消息
+				console.log(message)
 				this.messages.push(message)
 				//滚动到对应位置
 				setTimeout(() => {
@@ -155,19 +150,6 @@
 					});
 				}
 			},
-			propAnimation (type) {//道具动画
-				//动画的实现，可以不用关心
-				if(this.prop.timer) {
-					return;
-				};
-				this.prop.showHeart = type == 'heart' ? true : false;
-				this.prop.showAnimation = true;
-				this.prop.timer = setTimeout(() => {
-					this.prop.showAnimation = false;
-					this.prop.timer = null;
-				},2000)
-			},
-
 			sendMessage (messageType, content) {//发送消息
 				if(content == "" && messageType == 0) return;
 				var message = {
@@ -178,41 +160,56 @@
 				}
 				this.chatRoomService.sendMessages(this.roomId, message);
 				this.newMessage.content = ""
+			},
+			
+			propAnimation (type) {//道具动画
+				//动画的实现，可以不用关心
+				var self = this;
+				this.showProp = type == 'heart' ? true : false;
+				this.showAnimation = true;
+				var $animation = this.$refs.myanimation;
+				animation.transition($animation, {
+					styles : {
+						transform: 'translate(0, -200rpx)'
+					},
+					duration : 2000
+				},function () {
+					self.showAnimation = false;
+					setTimeout(() => {
+						animation.transition($animation, {
+							styles : {
+								transform: 'translate(0, 0rpx)'
+							},
+							duration : 0
+						})
+					},300)
+				})
 			}
 		}
 	}
 </script>
 
 <style>
-	page{
-		height: 100%;;
-	}
-	uni-page-body{
-		height: 100%;;
-	}
 	.chat-room{
-		display: flex;
-		flex-direction: column;
 		height: 100%;;
 	}
 	.online-avatar-container{
-		height: 80rpx;
-		display: flex;
+		height: 140rpx;
 		justify-content: flex-end;
 		padding:28rpx ;
 		box-shadow: 10rpx 30rpx 50rpx #fff;
 		z-index: 40;
 		position: relative;
+		flex-direction: row;
 	}
 	.online-avatar-item{
 		width:80rpx;
 		height:80rpx;
 		border-radius: 40rpx;
-		text-align: center;
 		line-height: 80rpx;
-		background: rgba(51,51,51,0.3);
+		background-color: rgba(51,51,51,0.3);
 		color: #fff;
-		font-size:18rpx 28rpx;
+		font-size:28rpx;
 		position: absolute;
 	}
 	.online-count{
@@ -221,59 +218,56 @@
 		border-radius: 40rpx;
 		text-align: center;
 		line-height: 80rpx;
-		background: rgba(51,51,51,0.3);
+		background-color: rgba(51,51,51,0.3);
 		color: #fff;
 		font-size:28rpx;
 	}
-	.online-avatar-item image{
+	.online-avatar-img{
 		width:80rpx;
 		height: 80rpx;
 	}
 	.chat-room-container{
-		flex:1;
-		display: flex;
-		flex-direction: column;
+		height: 1000rpx;
 	}
 	.chat-room-box{
-		flex:1;
+
 		padding: 10rpx 38rpx;
-		overflow: auto;
 		padding-top:20rpx;
-		box-sizing: border-box;
 	}
 	.message-box{
 		margin-top:16rpx;
 	}
 	.message-item{
-		box-sizing: border-box;
 		height: 72rpx;
+		line-height: 36rpx;
 		background-color: rgba(196,196,196,0.2);
-		display: inline-block;
-		font-size: 28rpx;
 		border-radius: 100rpx;
 		padding:18rpx 30rpx;
-		font-family: Microsoft YaHei UI;
+		flex-direction: row;
+		align-items: flex-start;
+		position: relative;
 	}
 	.user-name{
 		color: #D02129;
+		font-size: 28rpx;
 		font-family: Microsoft YaHei UI;
 	}
 	.user-message{
 		color: #333;
+		font-size: 28rpx;
 		font-family: Microsoft YaHei UI;
 	}
 	.chat-room-input{
 		height: 92rpx;
 		line-height: 92rpx;
 		padding:28rpx;
-		display: flex;
+		flex-direction: row;
 	}
 	.uni-input{
 		width:528rpx;
 		background-color: rgba(51,51,51,0.1);
 		height:92rpx;
 		border-radius: 100rpx;
-		box-sizing: border-box;
 		padding:26rpx 40rpx ;
 		font-size: 28rpx;
 	}
@@ -281,13 +275,13 @@
 		position: absolute;
 		width: 72rpx;
 		height: 72rpx;
-		background: #D02129;
+		background-color: #D02129;
 		right: 10rpx;
 		top:10rpx;
 		border-radius: 72rpx;
-		text-align: center;
 		line-height: 72rpx;
-		color: #fff;
+		color: #FFFFFF;
+		text-align: center;
 		font-weight: bold;
 		font-size: 32rpx;
 	}
@@ -306,13 +300,16 @@
 	.show-animation{
 		width:80rpx;
 		height: 320rpx;
-		position: fixed;
 		z-index: 44;
-		left:50%;
-		bottom:80rpx;
+		bottom:200rpx;
+		left:400rpx;
 		margin:0 -40rpx;
+		position: fixed;
 		justify-content: flex-end;
-		animation: myanimation 2s linear;
+		opacity: 1;
+	}
+	.hidden {
+		opacity: 0;
 	}
 	.prop-heart{
 		height: 80rpx;
@@ -322,9 +319,5 @@
 		height:160rpx;
 		width:80rpx;
 	}
-	@keyframes myanimation{
-		from{bottom:  80rpx;}
-		to{bottom: 600rpx;}
-	}
-	
+
 </style>
