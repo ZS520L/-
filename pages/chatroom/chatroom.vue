@@ -24,9 +24,9 @@
 				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
 			</view>
 		</view>
-		<view class="show-animation" v-if="showAnimation">
-			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="showHeart"></image>
-			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="!showHeart"></image>
+		<view class="show-animation" v-if="prop.showAnimation">
+			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="prop.showHeart"></image>
+			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="!prop.showHeart"></image>
 		</view>
 	</view>
 </template>
@@ -51,11 +51,14 @@
 					type : 0,
 					content : ""
 				},
+				prop : {
+					showHeart : false,
+					showAnimation : false,
+					timer : null
+				},
 				contentPosition : '',
-				showProp : false,
-				showAnimation : false,
-				chatRoomService : null,
-				propTimer : null
+				chatRoomService : null
+				
 			}
 		},
 		onLoad(options) {	
@@ -158,14 +161,14 @@
 			},
 			propAnimation (type) {//道具动画
 				//动画的实现，可以不用关心
-				if(this.propTimer) {
+				if(this.prop.timer) {
 					return;
 				};
-				this.showHeart = type == 'heart' ? true : false;
-				this.showAnimation = true;
-				this.propTimer = setTimeout(() => {
-					this.showAnimation = false;
-					this.propTimer = null;
+				this.prop.showHeart = type == 'heart' ? true : false;
+				this.prop.showAnimation = true;
+				this.prop.timer = setTimeout(() => {
+					this.prop.showAnimation = false;
+					this.prop.timer = null;
 				},2000)
 			},
 
