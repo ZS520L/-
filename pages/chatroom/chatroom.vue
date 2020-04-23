@@ -1,23 +1,23 @@
 <template>
 	<view class="chat-room">
 		<view class="online-avatar-container">
-			<view class="online-avatar-item" v-for="(value, key) in onlineUsers.users" :key="key" :style="countPosition(key)">
+			<view class="online-avatar-item" v-for="(value, key) in onlineUsers.users" :key="key" :style="realignAvatar(key)">
 				<image :src="value.avatar"></image>
 			</view>
 			<view class="online-count">{{onlineUsers.count}}</view>
 		</view>
 		<view class="chat-room-container">
 			<scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="contentPosition" show-scrollbar="true">
-				<view class="message-box" v-for="(value, key) in messages" :key="key" :id="'message-box'+ key">
+				<view class="message-box" v-for="(message, key) in messages" :key="key" :id="'message-box'+ key">
 					<view class="message-item">
-						<text class="user-name">{{value.content && value.content.senderNickname}}: </text>
-						<text :class="value.selfSent ? 'user-message self' : 'user-message' ">{{value.content && value.content.content}}</text>
+						<text class="user-name">{{message && message.senderNickname}}: </text>
+						<text :class="message.senderUserId == currentUser.id ? 'user-message self' : 'user-message' ">{{message && message.content}}</text>
 					</view>
 				</view>
 			</scroll-view>
 			<view class="chat-room-input">
 				<view style="position: relative;">
-					<input class="uni-input" :value="newMessage.content" placeholder="说点什么..." @input="handleInputMessage" />
+					<input class="uni-input" :value="newMessage.content" placeholder="说点什么..." @input="onInputMessage" />
 					<view class="uni-btn" @click="sendMessage(0,newMessage.content)">↑</view>
 				</view>
 				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
@@ -43,7 +43,7 @@
 				},
 				currentUser : {
 					nickname : "",
-					userId : null,
+					id : null,
 					avatar : ""
 				},
 				messages : [],
@@ -80,9 +80,9 @@
 			//构造chatRoomService
 			this.chatRoomService = new ChatRoomService(this.currentUser, uni);
 
-			this.chatRoomService.loadOnlineUsers(this.roomId, this.loadOnlineUserCallback)
-			this.chatRoomService.listenUserOnlineOffline(this.roomId, this.userOnlineCallback, this.userOfflineCallback);
-			this.chatRoomService.listenNewMessage(this.roomId, this.newMessageCallback, this.newPropCallback);
+			this.chatRoomService.loadOnlineUsers(this.roomId, this.onLoadOnlineUser)
+			this.chatRoomService.listenUserOnlineOffline(this.roomId, this.onUserOnline, this.onUserOffline);
+			this.chatRoomService.listenNewMessage(this.roomId, this.onNewMessage, this.onNewProp);
 
 			this.messages = this.chatRoomService.loadChatMessages(this.roomId)
 
@@ -93,77 +93,70 @@
 		},
 		methods: {
 
-			loadOnlineUserCallback (onlineUsers) {//初始化onlineUsers
+			onLoadOnlineUser (onlineUsers) {//初始化onlineUsers
 				this.onlineUsers.users = onlineUsers.users;
 				this.onlineUsers.count = onlineUsers.count;
 			},
-			onUserOnline (onlineUser) {//用户上线
-				this.onlineUsers.users.push(res.onlineUser)
-				this.onlineUsers.count = res.onlineUserCount
+			onUserOnline (user, count) {//用户上线
+				this.onlineUsers.users.push(user)
+				this.onlineUsers.count = count;
 				this.onNewMessage({
-					senderNickname : res.onlineUser.nickname,
+					senderNickname : user.nickname,
 					content : '进入房间'
-				},false);
+				});
 			},
-			userOfflineCallback (res) {//用户下线
-				let offlineUserIndex = this.onlineUsers.users.findIndex(item => item.id == event.userId);
+			onUserOffline (user, count) {//用户下线
+				//user未返回nickName
+				let offlineUserIndex = this.onlineUsers.users.findIndex(item => item.id == user.id);
 				if(offlineUserIndex>-1) {
 					//将离开的用户从onlineUsers中删掉
 					let offlineUser = Object.assign(this.onlineUsers.users[offlineUserIndex]);
 					this.onlineUsers.users.splice(offlineUserIndex, 1);
-					this.onlineUsers.count = res.onlineUserCount
+					this.onlineUsers.count = count;
 					this.onNewMessage({
 						senderNickname : offlineUser.nickname,
 						content : '退出房间'
-					},false);
+					});
 				}
 			},
-
 
 			realignAvatar (key) {//头像位置
 				return {
 					right: key*54 + 108 +'rpx',
 					zIndex : 100-key
 				}
-			}
-
+			},
 			onInputMessage (event) {//双向绑定消息 兼容
 				this.newMessage.content = event.target.value;
 			},
-			onPublishSuccess () {//发送成功回调
-				this.newMessage.content = ""
+			onNewMessage(message) {//收到消息
+				this.pushIntoMessages(message);
 			},
-
-			newMessageCallback(res) {//收到消息
-				let selfSent = res.senderUserId == this.currentUser.senderUserId;
-				this.onNewMessage(res, selfSent);
-				this.messages.push({
-					content : content,
-					selfSent : selfSent
-				})
+			pushIntoMessages (message) {//向messages添加消息
+				this.messages.push(message)
 				//滚动到对应位置
 				setTimeout(() => {
 					this.contentPosition = 'message-box'+(this.messages.length-1);
 				}, 300)
 			},
 
-			newPropCallback (res) {//收到道具 0为比心 1为火箭
+			onNewProp (res) {//收到道具 0为比心 1为火箭
 				if (res.content == 1) {
-					this.handleProps.call(res,'rocket')
+					this.propAnimation.call(res,'rocket')
 					this.onNewMessage({
 						senderNickname : res.senderNickname,
 						content : '送出了一枚大火箭'
-					},false);
+					});
 				}
 				if (res.content == 0) {
-					this.handleProps.call(this,'heart')
+					this.propAnimation.call(this,'heart')
 					this.onNewMessage({
 						senderNickname : res.senderNickname,
 						content : '送出了一个大大的比心'
-					},false);
+					});
 				}
 			},
-			handleProps (type) {//道具动画
+			propAnimation (type) {//道具动画
 				//动画的实现，可以不用关心
 				if(this.propTimer) {
 					return;
@@ -180,14 +173,13 @@
 				if(content == "" && messageType == 0) return;
 				var message = {
 					senderNickname : this.currentUser.nickname ,
-					senderUserId : this.currentUser.userId,
+					senderUserId : this.currentUser.id,
 					type : messageType,
 					content : content
 				}
-				this.chatRoomService.sendMessages(this.roomId, newMessageContainer)
-			},
-
-
+				this.chatRoomService.sendMessages(this.roomId, message);
+				this.newMessage.content = ""
+			}
 		}
 	}
 </script>

@@ -12,14 +12,15 @@
 			<view class="avatar-container">
 				<view class="avatar-notice">
 					<text>请选择头像</text>
-					<text class="avatar-notice-info" v-if="avatar ==''">请选一个头像哦!!!</text>
+					<text class="avatar-notice-info" v-if="selectedAvatar.imgUrl ==''">请选一个头像哦!!!</text>
 				</view>
 				<view class="avatar-box">
 					<view 
-					:class="avatarActiveKey == key ? 'avatar-box-item active' : 'avatar-box-item '" 
-					v-for="(value, key) in avatarList" :key="key" 
-					@click="handleSelectAvatar(value)">
-						<image :src="value.imgUrl"></image>
+					:class="selectedAvatar.id == avatar.id ? 'avatar-box-item active' : 'avatar-box-item '" 
+					v-for="(avatar, key) in avatarList" 
+					:key="key" 
+					@click="onSelectAvatar(avatar)">
+						<image :src="avatar.imgUrl"></image>
 					</view>
 				</view>
 			</view>
@@ -29,8 +30,8 @@
 					<text 
 					class="room-box-item" 
 					v-for="(room, key) in roomList"
-					:key="value.roomId"
-					@click="handleLogin(room)">{{value.name}}</text>
+					:key="room.roomId"
+					@click="onSelectRoom(room)">{{room.name}}</text>
 				</view>
 			</view>
 		</view>
@@ -79,8 +80,8 @@
 			onSelectAvatar (avtar) {//选择头像
 				this.selectedAvatar = avtar;
 			},
-			onSelectRoom(value) {//登录
-				if(this.avatar == "" || this.nickname  == "") {
+			onSelectRoom(room) {//登录
+				if(this.selectedAvatar.imgUrl == "" || this.nickname  == "") {
 					uni.showToast({
 						title:"请输入昵称，并选择头像",
 						duration:2000,
@@ -89,11 +90,11 @@
 					return
 				}
 				this.roomToken = {
-					roomId: value.roomId,
-					roomName:value.name,
+					roomId: room.roomId,
+					roomName:room.name,
 					userId:(Math.random() * 1000).toString(),
 					nickname:this.nickname,
-					avatar:this.avatar
+					avatar:this.selectedAvatar.imgUrl
 				};
 				let roomTokenAsJsonString = JSON.stringify(this.roomToken)
 				uni.navigateTo({
