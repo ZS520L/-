@@ -40,7 +40,7 @@
 </template>
 
 <script>
-    import ChatRoomService from '../../../lib/chatroomservice.js';
+    import ChatRoomService from '../../../lib/chatservice.js';
 
     export default {
         data() {

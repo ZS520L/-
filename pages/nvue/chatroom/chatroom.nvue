@@ -32,7 +32,7 @@
 </template>
 
 <script>
-	const ChatRoomService =require('../../../lib/chatroomservice');
+	const ChatRoomService =require('../../../lib/chatservice');
 	const animation = weex.requireModule('animation');
 	export default {
 		data () {
