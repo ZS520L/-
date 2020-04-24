@@ -1,9 +1,8 @@
 <template>
 	<view class="chat-room">
 		<view class="online-avatar-container">
-			//todo: 不要使用泛型的名字
-			<view class="online-avatar-item" v-for="(value, key) in onlineUsers.users" :key="key" :style="realignAvatar(key)">
-				<image :src="value.avatar"></image>
+			<view class="online-avatar-item" v-for="(user, key) in onlineUsers.users" :key="key" :style="realignAvatar(key)">
+				<image :src="user.avatar"></image>
 			</view>
 			<view class="online-count">{{onlineUsers.count}}</view>
 		</view>
@@ -19,15 +18,15 @@
 			<view class="chat-room-input">
 				<view style="position: relative;">
 					<input class="uni-input" :value="newMessage.content" placeholder="说点什么..." @input="onInputMessage" />
-					<view class="uni-btn" @click="sendMessage()">↑</view>
+					<view class="uni-btn" @click="sendMessage(newMessage.type.CHAT, newMessage.content)">↑</view>
 				</view>
-				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
-				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
+				<image class="heart" @click="sendMessage(newMessage.type.PROP, prop.type.HEART)" src="../../static/images/handle-heart.png"></image>
+				<image class="rocket" @click="sendMessage(newMessage.type.PROP, prop.type.ROCKET)" src="../../static/images/rokect.png"></image>
 			</view>
 		</view>
-		<view class="show-animation" v-if="prop.showAnimation">
-			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="prop.showHeart"></image>
-			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="!prop.showHeart"></image>
+		<view class="show-animation" v-if="prop.play">
+			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="prop.showPropType == prop.type.HEART"></image>
+			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="prop.showPropType == prop.type.ROCKET"></image>
 		</view>
 	</view>
 </template>
@@ -48,14 +47,21 @@
 					avatar : ""
 				},
 				messages : [],
-
-				messageContent:'',
-
+				newMessage : {
+					type : {
+						CHAT : 0,
+						PROP : 1
+					},
+					content : ""
+				},
 				prop : {
-					//用类型替换boolean
-					showHeart : false,
-					showAnimation : false,
-					timer : null
+					showPropType : 0,
+					play : false,
+					timer : null,
+					type : {
+						HEART : 0,
+						ROCKET : 1
+					}
 				},
 				contentPosition : '',
 				chatRoomService : null
@@ -96,7 +102,6 @@
 			this.chatRoomService.quitRoom(this.roomId);
 		},
 		methods: {
-
 			onLoadOnlineUser (onlineUsers) {//初始化onlineUsers
 				this.onlineUsers.users = onlineUsers.users;
 				this.onlineUsers.count = onlineUsers.count;
@@ -122,7 +127,6 @@
 					});
 				}
 			},
-
 			//重新排列头像
 			realignAvatar (key) {//头像位置
 				return {
@@ -140,70 +144,41 @@
 					this.contentPosition = 'message-box'+(this.messages.length-1);
 				}, 300)
 			},
-			//todo:不要用这样的参数名
-			onNewProp (res) {//收到道具 0为比心 1为火箭
-				if (res.content == 1) {
-					this.propAnimation.call(res,'rocket')
-					this.onNewMessage({
-						senderNickname : res.senderNickname,
-						content : '送出了一枚大火箭'
-					});
-				}
-				if (res.content == 0) {
-					this.propAnimation.call(this,'heart')
-					this.onNewMessage({
-						senderNickname : res.senderNickname,
-						content : '送出了一个大大的比心'
-					});
-				}
+			onNewProp (message) {//收到道具
+				var content = "";
+				if (message.content == this.prop.type.ROCKET) {
+					this.propAnimation(this.prop.type.ROCKET)
+					content = '送出了一枚大火箭';
+				};
+				if (message.content == this.prop.type.HEART) {
+					this.propAnimation(this.prop.type.HEART)
+					content = '送出了一个大大的比心';
+				};
+				this.onNewMessage({
+					senderNickname : message.senderNickname,
+					content : content
+				});
 			},
-			//todo:type 和content
 			propAnimation (type) {//道具动画
 				//动画的实现，可以不用关心
 				if(this.prop.timer) {
 					return;
 				};
-				this.prop.showHeart = type == 'heart' ? true : false;
-				this.prop.showAnimation = true;
+				this.prop.showPropType = type;
+				this.prop.play = true;
 				this.prop.timer = setTimeout(() => {
-					this.prop.showAnimation = false;
+					this.prop.play = false;
 					this.prop.timer = null;
 				},2000)
 			},
-
-			sendMessage () {//发送消息
-				if(content == "")
-					return;
+			sendMessage (type, content) {//发送消息
+				if(this.newMessage.content == "" && type == this.newMessage.type.CHAT) return;
 				var message = {
 					senderNickname : this.currentUser.nickname ,
 					senderUserId : this.currentUser.id,
-					type : 0,
-					content: thi.messageContent
+					type : type,
+					content: content
 				};
-				this.chatRoomService.sendMessages(this.roomId, message);
-				this.newMessage.content = ""
-			},
-
-			sendRocket (messageType, content) {//发送消息
-				if(content == "" && messageType == 0) return;
-				var message = {
-					senderNickname : this.currentUser.nickname ,
-					senderUserId : this.currentUser.id,
-					type : messageType,
-					content : content
-				}
-				this.chatRoomService.sendMessages(this.roomId, message);
-				this.newMessage.content = ""
-			},
-
-			sendHeart (messageType, content) {//发送消息
-				if(content == "" && messageType == 0) return;
-				var message = {
-					senderNickname : this.currentUser.nickname ,
-					senderUserId : this.currentUser.id,
-					type : messageType,
-					content : content
-				}
 				this.chatRoomService.sendMessages(this.roomId, message);
 				this.newMessage.content = ""
 			}
