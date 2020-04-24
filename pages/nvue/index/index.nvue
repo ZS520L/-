@@ -1,17 +1,16 @@
 <template>
-	<view>
+<view>
 		<view class="header">
 			<text class="title">GoEasy示例</text>
 			<text class="title">聊天室（直播间）</text>
 		</view>
 		<view class="content">
 			<input :class='nickname == "" ? "input-notice uni-input" : "uni-input"'
-			:value="nickname" 
-			placeholder="请输入昵称" 
-			@input="onInputUserName">
+			v-model="nickname" 
+			placeholder="请输入昵称" >
 			<view class="avatar-container">
 				<view class="avatar-notice">
-					<text>请选择头像</text>
+					<text style="font-size: 28rpx;">请选择头像</text>
 					<text class="avatar-notice-info" v-if="selectedAvatar.imgUrl ==''">请选一个头像哦!!!</text>
 				</view>
 				<view class="avatar-box">
@@ -20,7 +19,9 @@
 					v-for="(avatar, key) in avatarList" 
 					:key="key" 
 					@click="onSelectAvatar(avatar)">
-						<image :src="avatar.imgUrl"></image>
+						<image 
+						:src="avatar.imgUrl"
+						:class="selectedAvatar.id == avatar.id ? 'avatar-img active-img' : 'avatar-img'"></image>
 					</view>
 				</view>
 			</view>
@@ -43,14 +44,14 @@
 		data() {
 			return {
 				avatarList : [
-					{id:'1',imgUrl :'../../static/images/1.png'},
-					{id:'2',imgUrl :'../../static/images/2.png'},
-					{id:'3',imgUrl :'../../static/images/3.png'},
-					{id:'4',imgUrl :'../../static/images/4.png'},
-					{id:'5',imgUrl :'../../static/images/5.png'},
-					{id:'6',imgUrl :'../../static/images/6.png'},
-					{id:'7',imgUrl :'../../static/images/7.png'},
-					{id:'8',imgUrl :'../../static/images/8.png'}
+					{id:'1',imgUrl :'../../../static/images/1.png'},
+					{id:'2',imgUrl :'../../../static/images/2.png'},
+					{id:'3',imgUrl :'../../../static/images/3.png'},
+					{id:'4',imgUrl :'../../../static/images/4.png'},
+					{id:'5',imgUrl :'../../../static/images/5.png'},
+					{id:'6',imgUrl :'../../../static/images/6.png'},
+					{id:'7',imgUrl :'../../../static/images/7.png'},
+					{id:'8',imgUrl :'../../../static/images/8.png'}
 				],
 				roomList : [
 					{roomId:"001", name:"程序员集散地"},
@@ -67,16 +68,20 @@
 					roomId :null,
 					roomName : '',
 				}
-
 			}
 		},
 		onShow () {
-			Object.assign(this.$data, this.$options.data());
+			this.$data.nickname = "";
+			this.$data.selectedAvatar = {
+				imgUrl: '',
+				id: ''
+			};
+			this.$data.selectedRoom = {
+				roomId :null,
+				roomName : '',
+			};
 		},
 		methods: {
-			onInputUserName(event) {// 输入用户名
-				this.nickname = event.target.value;
-			},
 			onSelectAvatar (avtar) {//选择头像
 				this.selectedAvatar = avtar;
 			},
@@ -98,7 +103,7 @@
 				};
 				let roomTokenAsJsonString = JSON.stringify(this.roomToken)
 				uni.navigateTo({
-					url:"/pages/chatroom/chatroom?roomToken=" + roomTokenAsJsonString
+					url:"/pages/nvue/chatroom/chatroom?roomToken=" + roomTokenAsJsonString
 				})
 			}
 		}
@@ -110,70 +115,70 @@
 		padding: 70rpx 0;
 		font-size: 28rpx;
 		line-height: 48rpx;
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		font-family: Microsoft YaHei UI;
 	}
 	.title{
 		color:#D02129;
 		font-weight: bold;
 		font-size:52rpx;
 		line-height: 66rpx;
+		text-align: center;
+		font-family: Microsoft YaHei UI;
+		
 	}
 	.content{
-		display: flex;
 		justify-content: center;
 		flex-direction: column;
 		padding: 0 60rpx;
 	}
 	.uni-input{
 		height: 72rpx;
-		border:2rpx solid rgba(0,0,0,0.1);
-		outline: none;
+		border-width: 2rpx;
+		border-style: solid;
 		border-radius: 200rpx;
 		padding:16rpx 30rpx;
-		box-sizing: border-box;
 		font-size:24rpx;
 		text-align: center;
+		border-color: rgba(0,0,0,0.1);
 	}
 	.avatar-container{
 		padding:60rpx 0;
 	}
 	.avatar-notice{
 		line-height: 56rpx;
-		font-size:28rpx;
+		flex-direction: row;
 	}
 	.avatar-notice-info{
 		padding-left:20rpx;
 		color:#D02129;
+		font-size:28rpx;
 	}
 	.avatar-box{
 		height:300rpx;
-		display: flex;
 		flex-wrap: wrap;
-		
+		flex-direction: row;
 	}
 	.avatar-box-item{
 		height:140rpx;
 		width: 140rpx;
-		box-sizing: border-box;
 		margin:8rpx;
 	}
-	.avatar-box-item image{
+	.avatar-img{
 		height:124rpx;
 		width: 124rpx;
 		background-color: #F0AD4E;
 		border-radius: 35px;
 	}
-	.avatar-box .active{
-		border: 8rpx solid red;
-		box-sizing: border-box;
+	
+	.active{
+		border-width: 8rpx;
+		border-style: solid;
+		border-color: red;
 		border-radius: 129rpx;
 	}
-	.avatar-box .active image{
-		border:8rpx solid #fff;
-		box-sizing: border-box;
+	.active-img{
+		border-width: 8rpx;
+		border-style: solid;
+		border-color: #fff;
 	}
 	.room-container{
 		height: 370rpx;
@@ -183,8 +188,8 @@
 		line-height: 38rpx;
 	}
 	.room-box{
-		display: flex;
 		flex-wrap: wrap;
+		flex-direction: row;
 		justify-content: space-between;
 	}
 	.room-box-item{
@@ -192,18 +197,11 @@
 		height:90rpx;
 		line-height: 90rpx;
 		text-align: center;
-		box-sizing: border-box;
 		background-color: #D02129;
 		border-radius: 100rpx;
 		color: #fff;
 		margin-top:32rpx ;
 		font-size:26rpx;
-	}
-	.input-notice{
-		border: 1px solid #D02129;
-	}
-	::-webkit-input-placeholder{
-		color: #D02129;
 	}
 
 </style>

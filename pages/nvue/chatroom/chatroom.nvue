@@ -20,19 +20,19 @@
 					<input class="uni-input" v-model="newMessageContent" placeholder="说点什么..." />
 					<text class="uni-btn" @click="sendMessage(room.MessageType.CHAT,newMessageContent)">↑</text>
 				</view>
-				<image class="heart" @click="sendMessage(room.MessageType.PROP, room.Prop.HEART)" src="../../static/images/handle-heart.png"></image>
-				<image class="rocket" @click="sendMessage(room.MessageType.PROP, room.Prop.ROCKET)" src="../../static/images/rokect.png"></image>
+				<image class="heart" @click="sendMessage(room.MessageType.PROP, room.Prop.HEART)" src="../../../static/images/handle-heart.png"></image>
+				<image class="rocket" @click="sendMessage(room.MessageType.PROP, room.Prop.ROCKET)" src="../../../static/images/rokect.png"></image>
 			</view>
 		</view>
 		<view :class="prop.play ? 'show-animation' : 'show-animation hidden'" ref="myanimation">
-			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="prop.showPropType == room.Prop.HEART"></image>
-			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="prop.showPropType == room.Prop.ROCKET"></image>
+			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../../static/images/heart.png" v-if="prop.showPropType == room.Prop.HEART"></image>
+			<image class="prop-rocket" src="../../../static/images/rokect.png" v-if="prop.showPropType == room.Prop.ROCKET"></image>
 		</view>
 	</view>
 </template>
 
 <script>
-	const ChatRoomService =require('../../lib/chatRoomService');
+	const ChatRoomService =require('../../../lib/chatroomservice');
 	const animation = weex.requireModule('animation');
 	export default {
 		data () {
