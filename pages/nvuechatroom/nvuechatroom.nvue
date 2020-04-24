@@ -15,18 +15,18 @@
 					</view>
 				</view>
 			</scroll-view>
-			<view class="chat-room-input">
+			<view class="chat-room-bottom">
 				<view style="position: relative;">
-					<input class="uni-input" v-model="currentUserMessage" placeholder="说点什么..." />
-					<text class="uni-btn" @click="sendMessage(0,currentUserMessage)">↑</text>
+					<input class="uni-input" v-model="newMessageContent" placeholder="说点什么..." />
+					<text class="uni-btn" @click="sendMessage(room.MessageType.CHAT,newMessageContent)">↑</text>
 				</view>
-				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
-				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
+				<image class="heart" @click="sendMessage(room.MessageType.PROP, room.Prop.HEART)" src="../../static/images/handle-heart.png"></image>
+				<image class="rocket" @click="sendMessage(room.MessageType.PROP, room.Prop.ROCKET)" src="../../static/images/rokect.png"></image>
 			</view>
 		</view>
-		<view :class="showAnimation ? 'show-animation' : 'show-animation hidden'" ref="myanimation">
-			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="showProp"></image>
-			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="!showProp"></image>
+		<view :class="prop.play ? 'show-animation' : 'show-animation hidden'" ref="myanimation">
+			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../static/images/heart.png" v-if="prop.showPropType == room.Prop.HEART"></image>
+			<image class="prop-rocket" src="../../static/images/rokect.png" v-if="prop.showPropType == room.Prop.ROCKET"></image>
 		</view>
 	</view>
 </template>
@@ -34,19 +34,18 @@
 <script>
 	const ChatRoomService =require('../../lib/chatRoomService');
 	const animation = weex.requireModule('animation');
-	const dom = weex.requireModule('dom');
 	export default {
 		data () {
-			return {
-				messageContent : "",
+			return {		
 				room : null,
+				prop : {
+					showPropType : 0,
+					play : false,
+					timer : null
+				},
+				newMessageContent : "",
 				contentPosition : '',
-				//todo:
-				playRocket:false,
-				showProp : false,
-				showAnimation : false,
-
-				chatRoomService : null,
+				chatRoomService : null
 			}
 		},
 		onLoad(options) {
@@ -58,15 +57,17 @@
 				title: roomToken.roomName
 			});
 
+			//当前用户
+			var currentUser = {
+				id : roomToken.userId,
+				nickname : roomToken.nickname,
+				avatar: roomToken.avatar
+			};
 
-            //todo:currentUser
 			//构造chatRoomService
-			this.chatRoomService = new ChatRoomService(roomToken.roomId, {
-			    id : roomToken.userId,
-                nickname : roomToken.nickname,
-                avatar: roomToken.avatar
-			});
+			this.chatRoomService = new ChatRoomService(roomToken.roomId, currentUser, this.whenNewMessage);
 
+			//获取当前聊天室数据
             this.room = this.chatRoomService.room;
 		},
 		onBackPress () {//返回取消订阅
@@ -74,11 +75,6 @@
 			this.chatRoomService.quitRoom(this.room.id);
 		},
 		methods: {
-
-
-		    onNewProp(message){
-
-		    }
     		realignAvatar (key) {//头像位置
 				return {
 					right: key*54 + 108 +'rpx',
@@ -94,14 +90,21 @@
 					content : content
 				}
 				this.chatRoomService.sendMessages(this.room.id, message);
-				this.currentUserMessage = ""
+				this.newMessageContent = ""
 			},
-			
+			whenNewMessage (message) {//新消息监听
+				if(message.type == this.room.MessageType.PROP){
+					this.propAnimation(parseInt(message.content))
+				}
+				setTimeout(() => {
+					this.contentPosition = 'message-box'+(this.room.messages.length-1);
+				}, 300)
+			},
 			propAnimation (type) {//道具动画
 				//动画的实现，可以不用关心
 				var self = this;
-				this.showProp = type == 'heart' ? true : false;
-				this.showAnimation = true;
+				this.prop.showPropType = type;
+				this.prop.play = true;
 				var $animation = this.$refs.myanimation;
 				animation.transition($animation, {
 					styles : {
@@ -109,7 +112,7 @@
 					},
 					duration : 2000
 				},function () {
-					self.showAnimation = false;
+					self.prop.play = false;
 					setTimeout(() => {
 						animation.transition($animation, {
 							styles : {
@@ -126,7 +129,7 @@
 
 <style>
 	.chat-room{
-		height: 100%;;
+		flex:1;
 	}
 	.online-avatar-container{
 		height: 140rpx;
@@ -162,12 +165,14 @@
 		height: 80rpx;
 	}
 	.chat-room-container{
-		height: 1000rpx;
+		flex:1;
 	}
 	.chat-room-box{
-
-		padding: 10rpx 38rpx;
 		padding-top:20rpx;
+		padding-bottom: 30rpx;
+		padding-left: 38rpx;
+		padding-right: 38rpx;
+		flex: 1;
 	}
 	.message-box{
 		margin-top:16rpx;
@@ -175,36 +180,46 @@
 	.message-item{
 		height: 72rpx;
 		line-height: 36rpx;
-		background-color: rgba(196,196,196,0.2);
-		border-radius: 100rpx;
-		padding:18rpx 30rpx;
 		flex-direction: row;
 		align-items: flex-start;
-		position: relative;
 	}
 	.user-name{
 		color: #D02129;
 		font-size: 28rpx;
+		border-top-left-radius : 50rpx;
+		border-bottom-left-radius : 50rpx;
+		background-color: rgba(196,196,196,0.2);
+		padding-top: 18rpx;
+		padding-left: 30rpx;
+		padding-bottom: 18rpx;
 		font-family: Microsoft YaHei UI;
 	}
 	.user-message{
 		color: #333;
 		font-size: 28rpx;
 		font-family: Microsoft YaHei UI;
+		padding-top: 18rpx;
+		padding-right: 30rpx;
+		padding-bottom: 18rpx;
+		border-top-right-radius : 50rpx;
+		border-bottom-right-radius : 50rpx;
+		background-color: rgba(196,196,196,0.2);
 	}
-	.chat-room-input{
-		height: 92rpx;
-		line-height: 92rpx;
-		padding:28rpx;
+	.chat-room-bottom{
+		height: 112rpx;
+		line-height:112rpx;
+		padding-left:28rpx;
+		padding-right: 28rpx;
 		flex-direction: row;
+		align-items: center;
 	}
 	.uni-input{
 		width:528rpx;
 		background-color: rgba(51,51,51,0.1);
 		height:92rpx;
 		border-radius: 100rpx;
-		padding:26rpx 40rpx ;
 		font-size: 28rpx;
+		padding:26rpx 40rpx ;
 	}
 	.uni-btn{
 		position: absolute;
@@ -221,12 +236,12 @@
 		font-size: 32rpx;
 	}
 	.heart{
-		width:80rpx;
+		width:90rpx;
 		height: 92rpx;
 		padding:0 15rpx;
 	}
 	.rocket{
-		width:40rpx;
+		width:50rpx;
 		height: 92rpx;
 	}
 	.self{

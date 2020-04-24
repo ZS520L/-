@@ -70,7 +70,7 @@
 			};
 
 			//构造chatRoomService
-			this.chatRoomService = new ChatRoomService(roomToken.roomId, currentUser, this.messageListener);
+			this.chatRoomService = new ChatRoomService(roomToken.roomId, currentUser, this.whenNewMessage);
 
 			//获取当前聊天室数据
 			this.room = this.chatRoomService.room;
@@ -91,7 +91,7 @@
 			onInputMessage (event) {//双向绑定消息 兼容
 				this.newMessageContent = event.target.value;
 			},
-			messageListener (message) {//消息监听器
+			whenNewMessage (message) {//新消息监听
 				if(message.type == this.room.MessageType.PROP){
 					this.propAnimation(parseInt(message.content))
 				}
