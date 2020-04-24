@@ -51,7 +51,6 @@
         }
     },
     "mp-toutiao" : {
-        "appid" : "tt4e2d3890d107173d",
         "setting" : {
             "es6" : true,
             "postcss" : true,
