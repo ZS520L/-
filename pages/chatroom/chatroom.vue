@@ -1,6 +1,7 @@
 <template>
 	<view class="chat-room">
 		<view class="online-avatar-container">
+			//todo: 不要使用泛型的名字
 			<view class="online-avatar-item" v-for="(value, key) in onlineUsers.users" :key="key" :style="realignAvatar(key)">
 				<image :src="value.avatar"></image>
 			</view>
@@ -18,7 +19,7 @@
 			<view class="chat-room-input">
 				<view style="position: relative;">
 					<input class="uni-input" :value="newMessage.content" placeholder="说点什么..." @input="onInputMessage" />
-					<view class="uni-btn" @click="sendMessage(0,newMessage.content)">↑</view>
+					<view class="uni-btn" @click="sendMessage()">↑</view>
 				</view>
 				<image class="heart" @click="sendMessage.call(this,1,0)" src="../../static/images/handle-heart.png"></image>
 				<image class="rocket" @click="sendMessage.call(this,1,1)" src="../../static/images/rokect.png"></image>
@@ -47,11 +48,11 @@
 					avatar : ""
 				},
 				messages : [],
-				newMessage : {
-					type : 0,
-					content : ""
-				},
+
+				messageContent:'',
+
 				prop : {
+					//用类型替换boolean
 					showHeart : false,
 					showAnimation : false,
 					timer : null
@@ -109,7 +110,6 @@
 				});
 			},
 			onUserOffline (user, count) {//用户下线
-				//user未返回nickName
 				let offlineUserIndex = this.onlineUsers.users.findIndex(item => item.id == user.id);
 				if(offlineUserIndex>-1) {
 					//将离开的用户从onlineUsers中删掉
@@ -123,6 +123,7 @@
 				}
 			},
 
+			//重新排列头像
 			realignAvatar (key) {//头像位置
 				return {
 					right: key*54 + 108 +'rpx',
@@ -139,6 +140,7 @@
 					this.contentPosition = 'message-box'+(this.messages.length-1);
 				}, 300)
 			},
+			//todo:不要用这样的参数名
 			onNewProp (res) {//收到道具 0为比心 1为火箭
 				if (res.content == 1) {
 					this.propAnimation.call(res,'rocket')
@@ -155,6 +157,7 @@
 					});
 				}
 			},
+			//todo:type 和content
 			propAnimation (type) {//道具动画
 				//动画的实现，可以不用关心
 				if(this.prop.timer) {
@@ -168,7 +171,32 @@
 				},2000)
 			},
 
-			sendMessage (messageType, content) {//发送消息
+			sendMessage () {//发送消息
+				if(content == "")
+					return;
+				var message = {
+					senderNickname : this.currentUser.nickname ,
+					senderUserId : this.currentUser.id,
+					type : 0,
+					content: thi.messageContent
+				};
+				this.chatRoomService.sendMessages(this.roomId, message);
+				this.newMessage.content = ""
+			},
+
+			sendRocket (messageType, content) {//发送消息
+				if(content == "" && messageType == 0) return;
+				var message = {
+					senderNickname : this.currentUser.nickname ,
+					senderUserId : this.currentUser.id,
+					type : messageType,
+					content : content
+				}
+				this.chatRoomService.sendMessages(this.roomId, message);
+				this.newMessage.content = ""
+			},
+
+			sendHeart (messageType, content) {//发送消息
 				if(content == "" && messageType == 0) return;
 				var message = {
 					senderNickname : this.currentUser.nickname ,

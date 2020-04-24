@@ -33,16 +33,19 @@
 
 <script>
 	const ChatRoomService =require('../../lib/chatRoomService');
-	// const animation = weex.requireModule('animation');
-	// const dom = weex.requireModule('dom');
+	const animation = weex.requireModule('animation');
+	const dom = weex.requireModule('dom');
 	export default {
 		data () {
 			return {
-				currentUserMessage : "",
+				messageContent : "",
 				room : null,
 				contentPosition : '',
+				//todo:
+				playRocket:false,
 				showProp : false,
 				showAnimation : false,
+
 				chatRoomService : null,
 			}
 		},
@@ -55,6 +58,8 @@
 				title: roomToken.roomName
 			});
 
+
+            //todo:currentUser
 			//构造chatRoomService
 			this.chatRoomService = new ChatRoomService(roomToken.roomId, {
 			    id : roomToken.userId,
@@ -69,6 +74,11 @@
 			this.chatRoomService.quitRoom(this.room.id);
 		},
 		methods: {
+
+
+		    onNewProp(message){
+
+		    }
     		realignAvatar (key) {//头像位置
 				return {
 					right: key*54 + 108 +'rpx',
