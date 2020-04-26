@@ -65,7 +65,6 @@
 			console.log("room hide")
 		},
         onLoad(options) {
-			console.log("room load")
             //获取数据
             var roomToken = JSON.parse(options.roomToken);
 
