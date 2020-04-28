@@ -57,13 +57,6 @@
 
             }
         },
-		onShow () {
-			console.log("room show")
-			this.chatRoomService.loadOnlineUsers(this.room.id)
-		},
-		onHide () {
-			console.log("room hide")
-		},
         onLoad(options) {
             //获取数据
             var roomToken = JSON.parse(options.roomToken);
