@@ -48,10 +48,6 @@
 				chatRoomService : null
 			}
 		},
-		onShow () {
-			console.log("room show")
-			this.chatRoomService.loadOnlineUsers(this.room.id)
-		},
 		onHide () {
 			console.log("room hide")
 		},
