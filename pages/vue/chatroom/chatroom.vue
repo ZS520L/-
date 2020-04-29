@@ -61,9 +61,6 @@
             //获取数据
             var roomToken = JSON.parse(options.roomToken);
 
-            //保存当前房间id
-            this.roomId = roomToken.roomId;
-
             //设置导航标题
             uni.setNavigationBarTitle({
                 title: roomToken.roomName
@@ -76,8 +73,13 @@
                 avatar: roomToken.avatar
             };
 
+            var room = {
+                id : roomToken.roomId,
+                name : roomToken.roomName
+            };
+
             //构造chatRoomService
-            this.chatRoomService = new ChatRoomService(roomToken.roomId, currentUser, this.whenNewMessage);
+            this.chatRoomService = new ChatRoomService(room, currentUser, this.whenNewMessage);
 
             //获取当前聊天室数据
             this.room = this.chatRoomService.room;
@@ -85,7 +87,7 @@
         },
         onBackPress() {//返回按钮
             //断开连接
-            this.chatRoomService.quitRoom(this.roomId);
+            this.chatRoomService.quitRoom(this.room.id);
         },
         methods: {
 

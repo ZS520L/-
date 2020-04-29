@@ -67,8 +67,13 @@
 				avatar: roomToken.avatar
 			};
 
+			var room = {
+                id : roomToken.roomId,
+                name : roomToken.roomName
+            };
+
 			//构造chatRoomService
-			this.chatRoomService = new ChatRoomService(roomToken.roomId, currentUser, this.whenNewMessage);
+			this.chatRoomService = new ChatRoomService(room, currentUser, this.whenNewMessage);
 
 			//获取当前聊天室数据
             this.room = this.chatRoomService.room;
