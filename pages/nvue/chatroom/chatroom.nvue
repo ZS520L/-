@@ -1,6 +1,7 @@
 <template>
 	<view class="chat-room">
 		<view class="online-avatar-container">
+			
 			<view class="online-avatar-item" v-for="(value, key) in room.onlineUsers.users" :key="key" :style="realignAvatar(key)">
 				<image :src="value.avatar" class="online-avatar-img"></image>
 			</view>
@@ -84,9 +85,14 @@
 		},
 		methods: {
     		realignAvatar (key) {//头像位置
+				var len = this.room.onlineUsers.users.length-1;
+				if(key == len) {
+					return {
+					}
+				}
+				var p = (len - key)*20 + 20 +'rpx'
 				return {
-					right: key*54 + 108 +'rpx',
-					zIndex : 100-key
+					transform:'translateX('+ p +')'
 				}
 			},
 			sendMessage (messageType, content) {//发送消息
@@ -142,10 +148,10 @@
 	.online-avatar-container{
 		height: 140rpx;
 		justify-content: flex-end;
+		/* flex-direction: row-reverse; */
 		padding:28rpx ;
 		box-shadow: 10rpx 30rpx 50rpx #fff;
 		z-index: 40;
-		position: relative;
 		flex-direction: row;
 	}
 	.online-avatar-item{
@@ -156,7 +162,6 @@
 		background-color: rgba(51,51,51,0.3);
 		color: #fff;
 		font-size:28rpx;
-		position: absolute;
 	}
 	.online-count{
 		width:80rpx;

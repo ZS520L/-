@@ -92,9 +92,14 @@
         methods: {
 
             realignAvatar(key) {//排列头像
+                var len = this.room.onlineUsers.users.length-1;
+                if(key == len) {
+                	return {
+                	}
+                }
+                var p = (len - key)*20 + 20 +'rpx'
                 return {
-                    right: key * 54 + 108 + 'rpx',
-                    zIndex: 100 - key
+                	transform:'translateX('+ p +')'
                 }
             },
             onInputMessage(event) {//双向绑定消息 兼容
@@ -159,7 +164,6 @@
         padding: 28rpx;
         box-shadow: 10rpx 30rpx 50rpx #fff;
         z-index: 40;
-        position: relative;
     }
 
     .online-avatar-item {
@@ -171,7 +175,6 @@
         background: rgba(51, 51, 51, 0.3);
         color: #fff;
         font-size: 18rpx 28rpx;
-        position: absolute;
     }
 
     .online-count {

@@ -4,13 +4,13 @@
       {
         "path": "pages/vue/index/index",
         "style": {
-          "navigationBarTitleText": "GoEasy登录"
+          "navigationBarTitleText": "GoEasy聊天室示例"
         }
       },
       {
         "path": "pages/vue/chatroom/chatroom",
         "style": {
-          "navigationBarTitleText": "GoEasy直播间"
+          "navigationBarTitleText": "GoEasy聊天室"
         }
       }
       //nvue版本
@@ -18,7 +18,7 @@
       // {
       //   "path": "pages/nvue/index/index",
       //   "style": {
-      //     "navigationBarTitleText": "GoEasy登录"
+      //     "navigationBarTitleText": "GoEasy聊天室示例"
       //   }
       // },
       // {
