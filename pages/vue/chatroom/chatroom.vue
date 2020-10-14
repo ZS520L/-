@@ -8,8 +8,7 @@
             <view class="online-count">{{room.onlineUsers.count}}</view>
         </view>
         <view class="chat-room-container">
-            <scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="contentPosition"
-                         show-scrollbar="true">
+            <view class="scroll-view">
                 <view class="message-box" v-for="(message, key) in room.messages" :key="key" :id="'message-box'+ key">
                     <view class="message-item">
                         <text class="user-name">{{message && message.senderNickname}}:</text>
@@ -18,7 +17,7 @@
                         </text>
                     </view>
                 </view>
-            </scroll-view>
+            </view>
             <view class="chat-room-input">
                 <view style="position: relative;">
                     <input class="uni-input" :value="newMessageContent" placeholder="说点什么..." @input="onInputMessage"/>
@@ -109,9 +108,7 @@
                 if (message.type == this.room.MessageType.PROP) {
                     this.propAnimation(parseInt(message.content))
                 }
-                setTimeout(() => {
-                    this.contentPosition = 'message-box' + (this.room.messages.length - 1);
-                }, 300)
+                this.scrollToBottom();
             },
             sendMessage(messageType, content) {//发送消息
 
@@ -130,14 +127,21 @@
                 if (this.prop.timer) {
                     return;
                 }
-                ;
                 this.prop.showPropType = type;
                 this.prop.play = true;
                 this.prop.timer = setTimeout(() => {
                     this.prop.play = false;
                     this.prop.timer = null;
                 }, 2000)
-            }
+            },
+            scrollToBottom () {
+                this.$nextTick(function(){
+                    uni.pageScrollTo({
+                        scrollTop: 2000000,
+                        duration : 10
+                    })
+                })
+            },
         }
     }
 </script>
@@ -194,17 +198,14 @@
     }
 
     .chat-room-container {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
+
     }
 
-    .chat-room-box {
-        flex: 1;
-        padding: 10rpx 38rpx;
-        overflow: auto;
-        padding-top: 20rpx;
+    .scroll-view {
+        overflow-y: auto;
+        padding: 20rpx 38rpx 130rpx 38rpx;
         box-sizing: border-box;
+        -webkit-overflow-scrolling: touch;
     }
 
     .message-box {
@@ -233,6 +234,8 @@
     }
 
     .chat-room-input {
+		position: fixed;
+		bottom: 0;
         height: 92rpx;
         line-height: 92rpx;
         padding: 28rpx;
