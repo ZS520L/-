@@ -1,5 +1,12 @@
 <script>
+import GoEasy from "./lib/goeasy-1.2.0";
 export default {
+	globalData:{
+		goEasy: GoEasy.getInstance({
+			host:'hangzhou.goeasy.io',
+			appkey: 'common key',
+		})
+	},
 	onLaunch: function() {
 		console.log('App Launch');
 	},

@@ -1,52 +1,61 @@
 <template>
 	<view class="chat-room">
 		<view class="online-avatar-container">
-			
-			<view class="online-avatar-item" v-for="(value, key) in room.onlineUsers.users" :key="key" :style="realignAvatar(key)">
+			<view class="online-avatar-item" v-for="(value, key) in currentRoom.onlineUsers.users" :key="key"
+                :style="(currentRoom.onlineUsers.users.length-1)===key?'':'transform:translateX('+((currentRoom.onlineUsers.users.length-1-key)*20+20)+'rpx)'">
 				<image :src="value.avatar" class="online-avatar-img"></image>
 			</view>
-			<text class="online-count">{{room.onlineUsers.count}}</text>
+			<text class="online-count">{{currentRoom.onlineUsers.count}}</text>
 		</view>
 		<view class="chat-room-container">
 			<scroll-view class="chat-room-box" scroll-y="true" :scroll-into-view="contentPosition" show-scrollbar="true">
-				<view class="message-box" v-for="(message, key) in room.messages" :key="key" :id="'message-box'+ key">
+				<view class="message-box" v-for="(message, key) in currentRoom.messages" :key="key" :id="'message-box'+ key">
 					<view class="message-item">
 						<text class="user-name">{{message && message.senderNickname}}: </text>
-						<text :class="message.senderUserId == room.currentUser.id ? 'user-message self' : 'user-message' ">{{message && message.content}}</text>
+						<text :class="message.senderUserId == currentRoom.currentUser.id ? 'user-message self' : 'user-message' ">{{message && message.content}}</text>
 					</view>
 				</view>
 			</scroll-view>
 			<view class="chat-room-bottom">
 				<view style="position: relative;">
 					<input class="uni-input" v-model="newMessageContent" placeholder="说点什么..." />
-					<text class="uni-btn" @click="sendMessage(room.MessageType.CHAT,newMessageContent)">↑</text>
+					<text class="uni-btn" @click="sendMessage(MessageType.CHAT,newMessageContent)">↑</text>
 				</view>
-				<image class="heart" @click="sendMessage(room.MessageType.PROP, room.Prop.HEART)" src="../../../static/images/handle-heart.png"></image>
-				<image class="rocket" @click="sendMessage(room.MessageType.PROP, room.Prop.ROCKET)" src="../../../static/images/rokect.png"></image>
+				<image class="heart" @click="sendMessage(MessageType.PROP, Prop.HEART)" src="../../../static/images/handle-heart.png"></image>
+				<image class="rocket" @click="sendMessage(MessageType.PROP, Prop.ROCKET)" src="../../../static/images/rocket.png"></image>
 			</view>
 		</view>
-		<view :class="prop.play ? 'show-animation' : 'show-animation hidden'" ref="myanimation">
-			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../../static/images/heart.png" v-if="prop.showPropType == room.Prop.HEART"></image>
-			<image class="prop-rocket" src="../../../static/images/rokect.png" v-if="prop.showPropType == room.Prop.ROCKET"></image>
+		<view :class="propDisplay.play ? 'show-animation' : 'show-animation hidden'" ref="myanimation">
+			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../../static/images/heart.png" v-if="propDisplay.showPropType == Prop.HEART"></image>
+			<image class="prop-rocket" src="../../../static/images/rocket.png" v-if="propDisplay.showPropType == Prop.ROCKET"></image>
 		</view>
 	</view>
 </template>
 
 <script>
-	const ChatRoomService =require('../../../lib/chatservice');
-	const animation = weex.requireModule('animation');
+    let goEasy = getApp().globalData.goEasy;
+	const animation = weex.requireModule('animation')
 	export default {
 		data () {
 			return {		
-				room : null,
-				prop : {
+				currentRoom : null,
+				propDisplay : {
 					showPropType : 0,
 					play : false,
 					timer : null
 				},
 				newMessageContent : "",
 				contentPosition : '',
-				chatRoomService : null
+				// 道具类型
+                Prop: {
+                    HEART: 0,//桃心
+                    ROCKET: 1//火箭
+                },
+                // 消息类型
+                MessageType: {
+                    CHAT: 0,//文字聊天
+                    PROP: 1//道具
+                }
 			}
 		},
 		onHide () {
@@ -55,70 +64,253 @@
 		onLoad(options) {
 			//获取数据
 			var roomToken = JSON.parse(options.roomToken);
-			
+			// 初始化room
+            this.currentRoom = {
+                roomId: roomToken.roomId,
+                roomName: roomToken.roomName,
+                onlineUsers: {
+                    count: 0,
+                    users: []
+                },
+                messages: [],
+                currentUser: {
+                    id: roomToken.userId,
+                    nickname: roomToken.nickname,
+                    avatar: roomToken.avatar
+                }
+            };
 			//设置导航标题
 			uni.setNavigationBarTitle({
 				title: roomToken.roomName
 			});
 
-			//当前用户
-			var currentUser = {
-				id : roomToken.userId,
-				nickname : roomToken.nickname,
-				avatar: roomToken.avatar
-			};
-
-			var room = {
-                id : roomToken.roomId,
-                name : roomToken.roomName
-            };
-
-			//构造chatRoomService
-			this.chatRoomService = new ChatRoomService(room, currentUser, this.whenNewMessage);
-
-			//获取当前聊天室数据
-            this.room = this.chatRoomService.room;
+			 // 连接goEasy
+            this.connectGoEasy();
+            // 加载最后10条消息历史
+            this.loadHistory();
+            // 监听用户上下线
+            this.listenUsersOnlineOffline();
+            // 加载在线用户列表
+            this.loadOnlineUsers();
+            // 监听新消息
+            this.listenNewMessage();
 		},
-		onBackPress () {//返回取消订阅
-			//断开连接
-			this.chatRoomService.quitRoom(this.room.id);
+		onBackPress () {
+			// 断开连接
+            goEasy.disconnect({
+                onSuccess(){
+                    console.log("GoEasy disconnect successfully");
+                },
+                onFailed(error){
+                    console.log("GoEasy disconnect failed"+JSON.stringify(error));
+                }
+            });
 		},
 		methods: {
-    		realignAvatar (key) {//头像位置
-				var len = this.room.onlineUsers.users.length-1;
-				if(key == len) {
-					return {
-					}
+		    // 连接goEasy
+            connectGoEasy(){
+                goEasy.connect({
+                    userId : this.currentRoom.currentUser.id,
+                    userData : '{"nickname":"' + this.currentRoom.currentUser.nickname + '","avatar":"' + this.currentRoom.currentUser.avatar + '"}',
+                    onSuccess: function(){
+                        console.log("GoEasy connect successfully.")
+                    },
+                    onFailed: function(error){
+                        console.log("Failed to connect GoEasy, code:"+error.code+ ",error:"+error.content);
+                    },
+                    onProgress: function(attempts){
+                        console.log("GoEasy is connecting", attempts);
+                    }
+                });
+            },
+            // 监听用户上下线
+            listenUsersOnlineOffline(){
+                let self = this;
+                let roomId = this.currentRoom.roomId;
+                goEasy.subscribePresence({
+                    channel : roomId,
+                    onPresence : function (presenceEvents) {
+                        self.currentRoom.onlineUsers.count = presenceEvents.clientAmount;
+                        presenceEvents.events.forEach(function(event) {
+                            if (event.action === "join" || event.action === "online") {
+                                //进入房间
+                                let userData = JSON.parse(event.userData);
+
+                                let user = {
+                                    id: event.userId,
+                                    avatar: userData.avatar,
+                                    nickname: userData.nickname
+                                };
+                                //添加新用户
+                                self.currentRoom.onlineUsers.users.push(user);
+                                //添加进入房间的消息
+                                let message = {
+                                    content: " 进入房间",
+                                    senderUserId: event.userId,
+                                    senderNickname: userData.nickname,
+                                    type: self.MessageType.CHAT
+                                };
+                                self.currentRoom.messages.push(message);
+                            } else {
+                                //退出房间
+                                self.currentRoom.onlineUsers.users.forEach((user, index) => {
+                                    if (event.userId === user.id) {
+                                        // 删除当前聊天室列表中离线的用户
+                                        let offlineUser = self.currentRoom.onlineUsers.users.splice(index,1);
+                                        let message = {
+                                            content: " 退出房间",
+                                            senderUserId: offlineUser[0].userId,
+                                            senderNickname: offlineUser[0].nickname,
+                                            type: self.MessageType.CHAT
+                                        };
+                                        self.currentRoom.messages.push(message);
+                                    }
+                                });
+                            }
+                            setTimeout(() => {
+                                self.contentPosition = 'message-box'+(self.currentRoom.messages.length-1);
+                            }, 300);
+                        });
+                    },
+                    onSuccess : function () {
+                        console.log("用户上下线监听成功")
+                    },
+                    onFailed : function (error) {
+                        if (error.code === 401) {
+                            console.log("监听用户上下线失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
+                        } else {
+                            console.log("监听用户上下线失败, code:"+error.code+ ",content:"+error.content);
+                        }
+                    }
+                })
+            },
+            // 监听新消息
+            listenNewMessage(){
+                // 监听当前聊天室的消息
+                let self = this;
+                let roomId = this.currentRoom.roomId;
+                goEasy.subscribe({
+                    channel: roomId,
+                    onMessage : function (message) {
+                        let content = JSON.parse(message.content);
+                        let messageContent = "";
+                        //聊天消息
+                        if(content.type === self.MessageType.CHAT) {
+                            messageContent = content.content;
+                        }
+                        //道具消息
+                        if(content.type === self.MessageType.PROP) {
+                            if (content.content === self.Prop.ROCKET) {
+                                messageContent = "送出了一枚大火箭";
+                            }
+                            if (content.content === self.Prop.HEART) {
+                                messageContent = "送出了一个大大的比心";
+                            }
+                        }
+                        //添加消息
+                        let newMessage = {
+                            content: messageContent,
+                            senderUserId: content.senderUserId,
+                            senderNickname: content.senderNickname,
+                            type: self.MessageType.CHAT
+                        };
+                        self.currentRoom.messages.push(newMessage);
+                        if (content.type === self.MessageType.PROP) {
+                            self.propAnimation(parseInt(content.content))
+                        }
+                        setTimeout(() => {
+                            self.contentPosition = 'message-box'+(self.currentRoom.messages.length-1);
+                        }, 300);
+                    },
+                    onSuccess : function () {
+                      console.log("监听新消息成功")
+                    },
+                    onFailed : function(error) {
+                        console.log("订阅消息失败, code:"+error.code+ ",错误信息:"+error.content);
+                    }
+                })
+            },
+            // 加载在线用户列表
+            loadOnlineUsers(){
+                let self = this;
+                let roomId = this.currentRoom.roomId;
+                goEasy.hereNow({
+                    channels : [roomId],
+                    includeUsers : true,
+                    distinct : true
+                }, function (result) {
+                    if(result.code === 200) {
+                        let currentRoomOnlineUsers = result.content.channels[roomId];
+                        let users = [];
+                        currentRoomOnlineUsers.users.forEach(function(onlineUser) {
+                            let userData = JSON.parse(onlineUser.data);
+                            let user = {
+                                id: onlineUser.id,
+                                nickname: userData.nickname,
+                                avatar: userData.avatar
+                            };
+                            users.push(user);
+                        });
+                        self.currentRoom.onlineUsers = {
+                            users: users,
+                            count: currentRoomOnlineUsers.clientAmount
+                        };
+                    }else if(result.code === 401){
+                        console.log("获取在线用户失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
+                    }else{
+                        console.log("获取在线用户失败, code:" + result.code + ",错误信息:" + result.content);
+                    }
+                })
+            },
+            // 加载最后10条消息历史
+            loadHistory(){
+                let self = this;
+                let roomId = this.currentRoom.roomId;
+                goEasy.history({
+                    channel: roomId, //必需项
+                    limit: 10 //可选项，返回的消息条数
+                },function(response){
+                    if(response.code === 200){
+                        let messages = [];
+                        response.content.messages.map(message=>{
+                            messages.push(JSON.parse(message.content));
+                        });
+                        self.currentRoom.messages = messages;
+                    }else if(response.code === 401){
+                        console.log("获取历史消息失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
+                    }else{
+                        console.log("获取历史消息失败, code:" + response.code + ",错误信息:" + response.content);
+                    }
+                });
+            },
+			sendMessage (messageType, content) {
+			    //发送消息
+				if(content === "" && messageType == 0){
+				    return;
 				}
-				var p = (len - key)*20 + 20 +'rpx'
-				return {
-					transform:'translateX('+ p +')'
-				}
-			},
-			sendMessage (messageType, content) {//发送消息
-				if(content == "" && messageType == 0) return;
-				var message = {
-					senderNickname : this.room.currentUser.nickname ,
-					senderUserId : this.room.currentUser.id,
+				let message = {
+					senderNickname : this.currentRoom.currentUser.nickname,
+					senderUserId : this.currentRoom.currentUser.id,
 					type : messageType,
 					content : content
-				}
-				this.chatRoomService.sendMessages(this.room.id, message);
+				};
+				goEasy.publish({
+                    channel : this.currentRoom.roomId,
+                    message : JSON.stringify(message),
+                    onSuccess : function () {
+                        console.log("发送成功");
+                    },
+                    onFailed : function (error) {
+                        console.log("消息发送失败，错误编码：" + error.code + " 错误信息：" + error.content);
+                    }
+                });
 				this.newMessageContent = ""
 			},
-			whenNewMessage (message) {//新消息监听
-				if(message.type == this.room.MessageType.PROP){
-					this.propAnimation(parseInt(message.content))
-				}
-				setTimeout(() => {
-					this.contentPosition = 'message-box'+(this.room.messages.length-1);
-				}, 300)
-			},
 			propAnimation (type) {//道具动画
-				//动画的实现，可以不用关心
+				//动画的实现
 				var self = this;
-				this.prop.showPropType = type;
-				this.prop.play = true;
+				this.propDisplay.showPropType = type;
+				this.propDisplay.play = true;
 				var $animation = this.$refs.myanimation;
 				animation.transition($animation, {
 					styles : {
@@ -126,7 +318,7 @@
 					},
 					duration : 2000
 				},function () {
-					self.prop.play = false;
+					self.propDisplay.play = false;
 					setTimeout(() => {
 						animation.transition($animation, {
 							styles : {
@@ -197,6 +389,7 @@
 		align-items: flex-start;
 	}
 	.user-name{
+	    height: 72rpx;
 		color: #D02129;
 		font-size: 28rpx;
 		border-top-left-radius : 50rpx;
@@ -208,6 +401,7 @@
 		font-family: Microsoft YaHei UI;
 	}
 	.user-message{
+	    height: 72rpx;
 		color: #333;
 		font-size: 28rpx;
 		font-family: Microsoft YaHei UI;
@@ -238,6 +432,7 @@
 		position: absolute;
 		width: 72rpx;
 		height: 72rpx;
+		z-index: 10000;
 		background-color: #D02129;
 		right: 10rpx;
 		top:10rpx;
