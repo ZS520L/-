@@ -274,7 +274,17 @@
                     if(response.code === 200){
                         let messages = [];
                         response.content.messages.map(message=>{
-                            messages.push(JSON.parse(message.content));
+                            let historyMessage = JSON.parse(message.content);
+                            //道具消息
+                            if(historyMessage.type === self.MessageType.PROP) {
+                                if (historyMessage.content === self.Prop.ROCKET) {
+                                    historyMessage.content = "送出了一枚大火箭";
+                                }
+                                if (historyMessage.content === self.Prop.HEART) {
+                                    historyMessage.content = "送出了一个大大的比心";
+                                }
+                            }
+                            messages.push(historyMessage);
                         });
                         self.currentRoom.messages = messages;
                     }else if(response.code === 401){
@@ -354,12 +364,16 @@
     }
 
     .online-avatar-container {
+        position: fixed;
+        right: 0;
+        width: 100%;
         height: 80rpx;
         display: flex;
         justify-content: flex-end;
         padding: 28rpx;
         box-shadow: 10rpx 30rpx 50rpx #fff;
         z-index: 40;
+        background: #ffffff;
     }
 
     .online-avatar-item {
@@ -390,7 +404,7 @@
     }
 
     .chat-room-container {
-
+        padding-top: 100rpx;
     }
 
     .scroll-view {
