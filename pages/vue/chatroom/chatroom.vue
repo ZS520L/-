@@ -88,18 +88,16 @@
 
             // 连接goEasy
             this.connectGoEasy();
-            // 加载最后10条消息历史
-            this.loadHistory();
+          
             // 监听用户上下线
             this.listenUsersOnlineOffline();
-            // 加载在线用户列表
-            this.loadOnlineUsers();
+          
             // 监听新消息
             this.listenNewMessage();
         },
 		onUnload() {
             // 断开连接
-            this.goeasy.disconnect({
+            goEasy.disconnect({
                 onSuccess(){
                     console.log("GoEasy disconnect successfully");
                 },
@@ -111,11 +109,16 @@
         methods: {
             // 连接goEasy
             connectGoEasy(){
+				let self = this;
                 goEasy.connect({
                     userId : this.currentRoom.currentUser.id,
                     userData : '{"nickname":"' + this.currentRoom.currentUser.nickname + '","avatar":"' + this.currentRoom.currentUser.avatar + '"}',
                     onSuccess: function(){
                         console.log("GoEasy connect successfully.")
+						// 加载在线用户列表
+						self.loadOnlineUsers();
+						// 加载最后10条消息历史
+						self.loadHistory();
                     },
                     onFailed: function(error){
                         console.log("Failed to connect GoEasy, code:"+error.code+ ",error:"+error.content);
