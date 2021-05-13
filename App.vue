@@ -1,10 +1,13 @@
 <script>
-import GoEasy from "./lib/goeasy-1.2.0";
+import GoEasy from "./lib/goeasy-2.0.0.js";
 export default {
 	globalData:{
 		goEasy: GoEasy.getInstance({
-			host:'hangzhou.goeasy.io',
-			appkey: 'common key',
+			host:"hangzhou.goeasy.io",//应用所在的区域地址: 【hangzhou.goeasy.io |singapore.goeasy.io】
+      appkey:"BC-xxxx",// common key,
+      // true表示支持通知栏提醒，false则表示不需要通知栏提醒
+      allowNotification:true, //仅有效于app，小程序和H5将会被自动忽略
+      modules: ['PUBSUB'],
 		})
 	},
 	onLaunch: function() {

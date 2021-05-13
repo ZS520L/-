@@ -33,7 +33,8 @@
 </template>
 
 <script>
-    let goEasy = getApp().globalData.goEasy;
+	let goEasy = getApp().globalData.goEasy;
+	let pubSub = goEasy.pubsub;
 	const animation = weex.requireModule('animation')
 	export default {
 		data () {
@@ -109,8 +110,8 @@
             connectGoEasy(){
 				let self = this;
                 goEasy.connect({
-                    userId : this.currentRoom.currentUser.id,
-                    userData : '{"nickname":"' + this.currentRoom.currentUser.nickname + '","avatar":"' + this.currentRoom.currentUser.avatar + '"}',
+                    id : this.currentRoom.currentUser.id,
+                    data : '{"nickname":"' + this.currentRoom.currentUser.nickname + '","avatar":"' + this.currentRoom.currentUser.avatar + '"}',
                     onSuccess: function(){
                         console.log("GoEasy connect successfully.")
 						// 加载在线用户列表
@@ -130,15 +131,17 @@
             listenUsersOnlineOffline(){
                 let self = this;
                 let roomId = this.currentRoom.roomId;
-                goEasy.subscribePresence({
+				console.log('subscribePresence');
+                pubSub.subscribePresence({
                     channel : roomId,
                     onPresence : function (presenceEvents) {
+						console.log('onPresence')
                         self.currentRoom.onlineUsers.count = presenceEvents.clientAmount;
                         presenceEvents.events.forEach(function(event) {
                             if (event.action === "join" || event.action === "online") {
                                 //进入房间
                                 let userData = JSON.parse(event.userData);
-
+                                
                                 let user = {
                                     id: event.userId,
                                     avatar: userData.avatar,
@@ -192,7 +195,7 @@
                 // 监听当前聊天室的消息
                 let self = this;
                 let roomId = this.currentRoom.roomId;
-                goEasy.subscribe({
+                pubSub.subscribe({
                     channel: roomId,
                     onMessage : function (message) {
                         let content = JSON.parse(message.content);
@@ -237,63 +240,65 @@
             loadOnlineUsers(){
                 let self = this;
                 let roomId = this.currentRoom.roomId;
-                goEasy.hereNow({
+                pubSub.hereNow({
                     channels : [roomId],
                     includeUsers : true,
-                    distinct : true
-                }, function (result) {
-                    if(result.code === 200) {
-                        let currentRoomOnlineUsers = result.content.channels[roomId];
-                        let users = [];
-                        currentRoomOnlineUsers.users.forEach(function(onlineUser) {
-                            let userData = JSON.parse(onlineUser.data);
-                            let user = {
-                                id: onlineUser.id,
-                                nickname: userData.nickname,
-                                avatar: userData.avatar
-                            };
-                            users.push(user);
-                        });
-                        self.currentRoom.onlineUsers = {
-                            users: users,
-                            count: currentRoomOnlineUsers.clientAmount
-                        };
-                    }else if(result.code === 401){
-                        console.log("获取在线用户失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
-                    }else{
-                        console.log("获取在线用户失败, code:" + result.code + ",错误信息:" + result.content);
-                    }
+                    distinct : true,
+					onSuccess: function (result) {
+						if(result.code === 200) {
+							let currentRoomOnlineUsers = result.content.channels[roomId];
+							let users = [];
+							currentRoomOnlineUsers.users.forEach(function(onlineUser) {
+								let userData = JSON.parse(onlineUser.data);
+								let user = {
+									id: onlineUser.id,
+									nickname: userData.nickname,
+									avatar: userData.avatar
+								};
+								users.push(user);
+							});
+							self.currentRoom.onlineUsers = {
+								users: users,
+								count: currentRoomOnlineUsers.clientAmount
+							};
+						}else if(result.code === 401){
+							console.log("获取在线用户失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
+						}else{
+							console.log("获取在线用户失败, code:" + result.code + ",错误信息:" + result.content);
+						}
+					}
                 })
             },
             // 加载最后10条消息历史
             loadHistory(){
                 let self = this;
                 let roomId = this.currentRoom.roomId;
-                goEasy.history({
+                pubSub.history({
                     channel: roomId, //必需项
-                    limit: 10 //可选项，返回的消息条数
-                },function(response){
-                    if(response.code === 200){
-                        let messages = [];
-                        response.content.messages.map(message=>{
-                            let historyMessage = JSON.parse(message.content);
-							//道具消息
-							if(historyMessage.type === self.MessageType.PROP) {
-								if (historyMessage.content === self.Prop.ROCKET) {
-									historyMessage.content = "送出了一枚大火箭";
+                    limit: 10, //可选项，返回的消息条数
+					onSuccess:function(response){
+						if(response.code === 200){
+							let messages = [];
+							response.content.messages.map(message=>{
+								let historyMessage = JSON.parse(message.content);
+								//道具消息
+								if(historyMessage.type === self.MessageType.PROP) {
+									if (historyMessage.content === self.Prop.ROCKET) {
+										historyMessage.content = "送出了一枚大火箭";
+									}
+									if (historyMessage.content === self.Prop.HEART) {
+										historyMessage.content = "送出了一个大大的比心";
+									}
 								}
-								if (historyMessage.content === self.Prop.HEART) {
-									historyMessage.content = "送出了一个大大的比心";
-								}
-							}
-							messages.push(historyMessage);
-                        });
-                        self.currentRoom.messages = messages;
-                    }else if(response.code === 401){
-                        console.log("获取历史消息失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
-                    }else{
-                        console.log("获取历史消息失败, code:" + response.code + ",错误信息:" + response.content);
-                    }
+								messages.push(historyMessage);
+							});
+							self.currentRoom.messages = messages;
+						}else if(response.code === 401){
+							console.log("获取历史消息失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
+						}else{
+							console.log("获取历史消息失败, code:" + response.code + ",错误信息:" + response.content);
+						}
+					}
                 });
             },
 			sendMessage (messageType, content) {
@@ -307,7 +312,7 @@
 					type : messageType,
 					content : content
 				};
-				goEasy.publish({
+				pubSub.publish({
                     channel : this.currentRoom.roomId,
                     message : JSON.stringify(message),
                     onSuccess : function () {
