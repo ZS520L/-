@@ -243,32 +243,28 @@
                     includeUsers : true,
                     distinct : true,
 					onSuccess: function (result) {
-						if(result.code === 200) {
-							let currentRoomOnlineUsers = result.content.channels[roomId];
-							let users = [];
-							currentRoomOnlineUsers.users.forEach(function(onlineUser) {
-								let userData = JSON.parse(onlineUser.data);
-								let user = {
-									id: onlineUser.id,
-									nickname: userData.nickname,
-									avatar: userData.avatar
-								};
-								users.push(user);
-							});
-							self.currentRoom.onlineUsers = {
-								users: users,
-								count: currentRoomOnlineUsers.clientAmount
-							};
-                        }
+                        let currentRoomOnlineUsers = result.content.channels[roomId];
+                        let users = [];
+                        currentRoomOnlineUsers.users.forEach(function(onlineUser) {
+                            let userData = JSON.parse(onlineUser.data);
+                            let user = {
+                                id: onlineUser.id,
+                                nickname: userData.nickname,
+                                avatar: userData.avatar
+                            };
+                            users.push(user);
+                        });
+                        self.currentRoom.onlineUsers = {
+                            users: users,
+                            count: currentRoomOnlineUsers.clientAmount
+                        };
 					},
 					onFailed: function (error) {
                         //获取失败
-                        let code = error.code;
-                        let content = error.content;
-                        if(code === 401){
+                        if(error.code === 401){
                             console.log("获取在线用户失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
                         }else{
-                            console.log("获取在线用户失败, code:" + code + ",错误信息:" + content);
+                            console.log("获取在线用户失败, code:" + error.code + ",错误信息:" + error.content);
                         }
                     }
                 })
@@ -281,32 +277,28 @@
                     channel: roomId, //必需项
                     limit: 10, //可选项，返回的消息条数
 					onSuccess:function(response){
-						if(response.code === 200){
-							let messages = [];
-							response.content.messages.map(message=>{
-								let historyMessage = JSON.parse(message.content);
-								//道具消息
-								if(historyMessage.type === self.MessageType.PROP) {
-									if (historyMessage.content === self.Prop.ROCKET) {
-										historyMessage.content = "送出了一枚大火箭";
-									}
-									if (historyMessage.content === self.Prop.HEART) {
-										historyMessage.content = "送出了一个大大的比心";
-									}
-								}
-								messages.push(historyMessage);
-							});
-							self.currentRoom.messages = messages;
-						}
+                        let messages = [];
+                        response.content.messages.map(message=>{
+                            let historyMessage = JSON.parse(message.content);
+                            //道具消息
+                            if(historyMessage.type === self.MessageType.PROP) {
+                                if (historyMessage.content === self.Prop.ROCKET) {
+                                    historyMessage.content = "送出了一枚大火箭";
+                                }
+                                if (historyMessage.content === self.Prop.HEART) {
+                                    historyMessage.content = "送出了一个大大的比心";
+                                }
+                            }
+                            messages.push(historyMessage);
+                        });
+                        self.currentRoom.messages = messages;
 					},
 					onFailed: function (error) {
                         //获取失败
-                        let code = error.code;
-                        let content = error.content;
-                        if(code === 401){
+                        if(error.code === 401){
                             console.log("获取历史消息失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
                         }else{
-                            console.log("获取历史消息失败, code:" + code + ",错误信息:" + content);
+                            console.log("获取历史消息失败, code:" + error.code + ",错误信息:" + error.content);
                         }
                     }
                 });
