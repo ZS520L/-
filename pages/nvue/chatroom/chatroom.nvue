@@ -259,12 +259,18 @@
 								users: users,
 								count: currentRoomOnlineUsers.clientAmount
 							};
-						}else if(result.code === 401){
-							console.log("获取在线用户失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
-						}else{
-							console.log("获取在线用户失败, code:" + result.code + ",错误信息:" + result.content);
-						}
-					}
+                        }
+					},
+					onFailed: function (error) {
+                        //获取失败
+                        let code = error.code;
+                        let content = error.content;
+                        if(code === 401){
+                            console.log("获取在线用户失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
+                        }else{
+                            console.log("获取在线用户失败, code:" + code + ",错误信息:" + content);
+                        }
+                    }
                 })
             },
             // 加载最后10条消息历史
@@ -291,12 +297,18 @@
 								messages.push(historyMessage);
 							});
 							self.currentRoom.messages = messages;
-						}else if(response.code === 401){
-							console.log("获取历史消息失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
-						}else{
-							console.log("获取历史消息失败, code:" + response.code + ",错误信息:" + response.content);
 						}
-					}
+					},
+					onFailed: function (error) {
+                        //获取失败
+                        let code = error.code;
+                        let content = error.content;
+                        if(code === 401){
+                            console.log("获取历史消息失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
+                        }else{
+                            console.log("获取历史消息失败, code:" + code + ",错误信息:" + content);
+                        }
+                    }
                 });
             },
 			sendMessage (messageType, content) {
