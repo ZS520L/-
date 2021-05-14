@@ -131,17 +131,15 @@
             listenUsersOnlineOffline(){
                 let self = this;
                 let roomId = this.currentRoom.roomId;
-				console.log('subscribePresence');
                 pubSub.subscribePresence({
                     channel : roomId,
                     onPresence : function (presenceEvents) {
-						console.log('onPresence')
                         self.currentRoom.onlineUsers.count = presenceEvents.clientAmount;
                         presenceEvents.events.forEach(function(event) {
                             if (event.action === "join" || event.action === "online") {
                                 //进入房间
                                 let userData = JSON.parse(event.userData);
-                                
+
                                 let user = {
                                     id: event.userId,
                                     avatar: userData.avatar,

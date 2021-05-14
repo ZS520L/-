@@ -241,10 +241,10 @@
 					includeUsers : true,
 					distinct : true,
 					onSuccess: function (result) {
-					if(result.code === 200) {
-						let currentRoomOnlineUsers = result.content.channels[roomId];
-						let users = self.currentRoom.onlineUsers.users;
-						currentRoomOnlineUsers.users.forEach(function(onlineUser) {
+						if(result.code === 200) {
+							let currentRoomOnlineUsers = result.content.channels[roomId];
+							let users = self.currentRoom.onlineUsers.users;
+							currentRoomOnlineUsers.users.forEach(function(onlineUser) {
 							let userData = JSON.parse(onlineUser.data);
 							let user = {
 								id: onlineUser.id,
