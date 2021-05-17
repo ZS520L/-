@@ -1,5 +1,5 @@
 <script>
-import GoEasy from "./lib/goeasy-2.0.1.min.js";
+import GoEasy from "./lib/goeasy-2.0.5.min.js";
 export default {
 	globalData:{
 		goEasy: GoEasy.getInstance({

@@ -241,8 +241,8 @@
 					includeUsers : true,
 					distinct : true,
 					onSuccess: function (result) {
+						let users = [];
 						let currentRoomOnlineUsers = result.content.channels[roomId];
-						let users = self.currentRoom.onlineUsers.users;
 						currentRoomOnlineUsers.users.forEach(function (onlineUser) {
 							let userData = JSON.parse(onlineUser.data);
 							let user = {
