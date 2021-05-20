@@ -117,7 +117,7 @@
 				}
 				goEasy.connect({
 					id : this.currentRoom.currentUser.id,
-					data : userData,
+					data : JSON.stringify(userData),
 					onSuccess: function(){
 						console.log("GoEasy connect successfully.")
 						// 加载在线用户列表
@@ -142,11 +142,12 @@
 					onPresence: function (presenceEvents) {
 						self.currentRoom.onlineUsers.count = presenceEvents.clientAmount;
 						presenceEvents.events.forEach(function (event) {
+							let userData = JSON.parse(event.data);
 							if (event.action === "join" || event.action === "online") {
 								//进入房间
 								let userId = event.id;
-								let avatar = event.data.avatar;
-								let nickname = event.data.nickname;
+								let avatar = userData.avatar;
+								let nickname = userData.nickname;
 								let user = {
 									id: userId,
 									avatar: avatar,
@@ -202,7 +203,7 @@
 					channel: roomId,
 					onMessage : function (message) {
 						let messageContent = "";
-						let content = message.content;
+						let content = JSON.parse(message.content);
 						//聊天消息
 						if(content.type === self.MessageType.CHAT) {
 							messageContent = content.content;
@@ -249,7 +250,7 @@
 						let users = [];
 						let currentRoomOnlineUsers = result.content.channels[roomId];
 						currentRoomOnlineUsers.users.forEach(function (onlineUser) {
-							let userData = onlineUser.data;
+							let userData = JSON.parse(onlineUser.data);
 							let user = {
 								id: onlineUser.id,
 								nickname: userData.nickname,
@@ -282,7 +283,7 @@
 					onSuccess:function(response){
 						let messages = [];
 						response.content.messages.map(message => {
-							let historyMessage = message.content;
+							let historyMessage = JSON.parse(message.content);
 							//道具消息
 							if (historyMessage.type === self.MessageType.PROP) {
 								if (historyMessage.content === self.Prop.ROCKET) {
@@ -322,7 +323,7 @@
 				};
 				pubSub.publish({
 					channel : this.currentRoom.roomId,
-					message : message,
+					message : JSON.stringify(message),
 					onSuccess : function () {
 						console.log("发送成功");
 					},
