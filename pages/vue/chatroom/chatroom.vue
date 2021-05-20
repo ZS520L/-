@@ -111,9 +111,13 @@
 			// 连接goEasy
 			connectGoEasy(){
 				let self = this;
+				let userData = {
+					avatar: this.currentRoom.currentUser.avatar,
+					nickname: this.currentRoom.currentUser.nickname
+				}
 				goEasy.connect({
 					id : this.currentRoom.currentUser.id,
-					data : '{"nickname":"' + this.currentRoom.currentUser.nickname + '","avatar":"' + this.currentRoom.currentUser.avatar + '"}',
+					data : userData,
 					onSuccess: function(){
 						console.log("GoEasy connect successfully.")
 						// 加载在线用户列表
@@ -140,32 +144,33 @@
 						presenceEvents.events.forEach(function (event) {
 							if (event.action === "join" || event.action === "online") {
 								//进入房间
-								let userData = JSON.parse(event.userData);
+								let userId = event.id;
+								let avatar = event.data.avatar;
+								let nickname = event.data.nickname;
 								let user = {
-									id: event.userId,
-									avatar: userData.avatar,
-									nickname: userData.nickname
+									id: userId,
+									avatar: avatar,
+									nickname: nickname
 								};
-								
 								//添加新用户
 								self.currentRoom.onlineUsers.users.push(user);
 								//添加进入房间的消息
 								let message = {
 									content: " 进入房间",
-									senderUserId: event.userId,
-									senderNickname: userData.nickname,
+									senderUserId: userId,
+									senderNickname: nickname,
 									type: self.MessageType.CHAT
 								};
 								self.currentRoom.messages.push(message);
 							} else {
 								//退出房间
 								self.currentRoom.onlineUsers.users.forEach((user, index) => {
-									if (event.userId === user.id) {
+									if (event.id === user.id) {
 										// 删除当前聊天室列表中离线的用户
 										let offlineUser = self.currentRoom.onlineUsers.users.splice(index, 1);
 										let message = {
 											content: " 退出房间",
-											senderUserId: offlineUser[0].userId,
+											senderUserId: offlineUser[0].id,
 											senderNickname: offlineUser[0].nickname,
 											type: self.MessageType.CHAT
 										};
@@ -196,8 +201,8 @@
 				pubSub.subscribe({
 					channel: roomId,
 					onMessage : function (message) {
-						let content = JSON.parse(message.content);
 						let messageContent = "";
+						let content = message.content;
 						//聊天消息
 						if(content.type === self.MessageType.CHAT) {
 							messageContent = content.content;
@@ -244,7 +249,7 @@
 						let users = [];
 						let currentRoomOnlineUsers = result.content.channels[roomId];
 						currentRoomOnlineUsers.users.forEach(function (onlineUser) {
-							let userData = JSON.parse(onlineUser.data);
+							let userData = onlineUser.data;
 							let user = {
 								id: onlineUser.id,
 								nickname: userData.nickname,
@@ -277,7 +282,7 @@
 					onSuccess:function(response){
 						let messages = [];
 						response.content.messages.map(message => {
-							let historyMessage = JSON.parse(message.content);
+							let historyMessage = message.content;
 							//道具消息
 							if (historyMessage.type === self.MessageType.PROP) {
 								if (historyMessage.content === self.Prop.ROCKET) {
@@ -301,11 +306,9 @@
 					}
 				});
 			},
-
 			onInputMessage(event) {//双向绑定消息 兼容
 				this.newMessageContent = event.target.value;
 			},
-
 			sendMessage(messageType, content) {
 				//发送消息
 				if (content === "" && messageType === this.MessageType.CHAT) {
@@ -319,7 +322,7 @@
 				};
 				pubSub.publish({
 					channel : this.currentRoom.roomId,
-					message : JSON.stringify(message),
+					message : message,
 					onSuccess : function () {
 						console.log("发送成功");
 					},
@@ -329,7 +332,6 @@
 				});
 				this.newMessageContent = "";
 			},
-
 			propAnimation(type) {//道具动画
 				//动画的实现
 				if (this.propDisplay.timer) {
@@ -342,7 +344,6 @@
 					this.propDisplay.timer = null;
 				}, 2000)
 			},
-
 			scrollToBottom () {
 				this.$nextTick(function(){
 					uni.pageScrollTo({
