@@ -117,7 +117,7 @@
 				}
 				goEasy.connect({
 					id : this.currentRoom.currentUser.id,
-					data : JSON.stringify(userData),
+					data : userData,
 					onSuccess: function(){
 						console.log("GoEasy connect successfully.")
 						// 加载在线用户列表
@@ -142,7 +142,7 @@
 					onPresence: function (presenceEvents) {
 						self.currentRoom.onlineUsers.count = presenceEvents.clientAmount;
 						presenceEvents.events.forEach(function (event) {
-							let userData = JSON.parse(event.data);
+							let userData = event.data;
 							if (event.action === "join" || event.action === "online") {
 								//进入房间
 								let userId = event.id;
@@ -250,7 +250,7 @@
 						let users = [];
 						let currentRoomOnlineUsers = result.content.channels[roomId];
 						currentRoomOnlineUsers.users.forEach(function (onlineUser) {
-							let userData = JSON.parse(onlineUser.data);
+							let userData = onlineUser.data;
 							let user = {
 								id: onlineUser.id,
 								nickname: userData.nickname,
