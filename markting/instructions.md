@@ -19,7 +19,7 @@ GoEasy Websocket安全稳定，支持海量用户同时在线，每秒千万级�
 
 ##关于GoEasy Websocket实时通讯服务
 
-GoEasy Websocket安全稳定，性能强悍，支持海量用户同时在线，每秒千万级消息实时送达， 服务过大量知名企业的重要线上活动那个。
+GoEasy Websocket安全稳定，性能强悍，支持海量用户同时在线，每秒千万级消息实时送达， 服务过大量知名企业的重要线上活动。
 
 支持所有主流Web技术框架和平台：
 * VUE和NVUE   
@@ -44,7 +44,7 @@ GoEasy Websocket安全稳定，性能强悍，支持海量用户同时在线，�
 
 
 *  默认为vue, 可以在pages.json里，切换vue和nvue
-*  在app.vue里将appkey替换为您[自己的common key](https://www.goeasy.io/cn/docs/goeasy-2.x/common/account/developer-account.html).
+*  在app.vue里将appkey替换为您自己的common Key，[获取appkey](https://www.goeasy.io/cn/docs/goeasy-2.x/common/account/developer-account.html).
 ```js
         globalData:{
                 goEasy: GoEasy.getInstance({
