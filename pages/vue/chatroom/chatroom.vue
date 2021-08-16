@@ -30,10 +30,12 @@
 			</view>
 		</view>
 		<view class="show-animation" v-if="propDisplay.play">
-			<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../../static/images/heart.png"
-				   v-if="propDisplay.showPropType == Prop.HEART"></image>
-			<image class="prop-rocket" src="../../../static/images/rocket.png"
-				   v-if="propDisplay.showPropType == Prop.ROCKET"></image>
+			<view v-if="propDisplay.showPropType == Prop.HEART">
+				<image class="prop-heart" v-for="(value, key) in 4" :key="key" src="../../../static/images/heart.png" ></image>
+			</view>
+			<view  v-if="propDisplay.showPropType == Prop.ROCKET">
+				<image class="prop-rocket" src="../../../static/images/rocket.png"></image>
+			</view>
 		</view>
 	</view>
 </template>
