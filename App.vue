@@ -1,14 +1,7 @@
 <script>
-import GoEasy from "./lib/goeasy-2.1.11.min.js";
 export default {
-	globalData:{
-		goEasy: GoEasy.getInstance({
-			host:"hangzhou.goeasy.io",//应用所在的区域地址: 【hangzhou.goeasy.io |singapore.goeasy.io】
-            appkey:"BC-xxxx",// common key,
-            modules: ['pubsub']
-		})
-	},
 	onLaunch: function() {
+		this.globalData.goEasy = this.goEasy;
 		console.log('App Launch');
 	},
 	onShow: function() {
