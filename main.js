@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import App from './App'
-import GoEasy from "./lib/goeasy-2.1.11.min.js";
+import GoEasy from "./lib/goeasy-2.2.4.min";
 
 const goEasy = GoEasy.getInstance({
 	host:"hangzhou.goeasy.io",//应用所在的区域地址: 【hangzhou.goeasy.io |singapore.goeasy.io】
