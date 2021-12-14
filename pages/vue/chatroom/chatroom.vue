@@ -91,13 +91,20 @@
 
 			// 连接goEasy
 			this.connectGoEasy();
-		  
-			// 监听用户上下线
-			this.listenUsersOnlineOffline();
-		  
-			// 监听新消息
-			this.listenNewMessage();
-		},
+
+            // 监听用户上下线
+            this.listenUsersOnlineOffline();
+
+
+            // 加载最后10条消息历史
+            this.loadHistory();
+
+            // 监听新消息
+            this.listenNewMessage();
+
+
+
+        },
 		onUnload() {
 			// 断开连接
 			goEasy.disconnect({
@@ -122,10 +129,9 @@
 					data : userData,
 					onSuccess: function(){
 						console.log("GoEasy connect successfully.")
-						// 加载在线用户列表
-						self.loadOnlineUsers();
-						// 加载最后10条消息历史
-						self.loadHistory();
+
+                        // 加载在线用户列表
+                        self.loadOnlineUsers();
 					},
 					onFailed: function(error){
 						console.log("Failed to connect GoEasy, code:"+error.code+ ",error:"+error.content);
@@ -188,12 +194,8 @@
 						console.log("用户上下线监听成功")
 					},
 					onFailed : function (error) {
-						if (error.code === 401) {
-							console.log("监听用户上下线失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
-						} else {
-							console.log("监听用户上下线失败, code:"+error.code+ ",content:"+error.content);
-						}
-					}
+						console.log("监听用户上下线失败, code:"+error.code+ ",content:"+error.content);
+                    }
 				})
 			},
 			// 监听新消息
@@ -267,11 +269,7 @@
 					},
 					onFailed: function (error) {
 						//获取失败
-						if(error.code === 401){
-							console.log("获取在线用户失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
-						}else{
-							console.log("获取在线用户失败, code:" + error.code + ",错误信息:" + error.content);
-						}
+                        console.log("获取在线用户失败, code:" + error.code + ",错误信息:" + error.content);
 					}
 				});
 			},
@@ -300,12 +298,7 @@
 						self.currentRoom.messages = messages;
 					},
 					onFailed: function (error) {
-						//获取失败
-						if(error.code === 401){
-							console.log("获取历史消息失败,默认不开通，付费应用，可以在我的应用->查看详情，高级功能里自助开通");
-						}else{
-							console.log("获取历史消息失败, code:" + error.code + ",错误信息:" + error.content);
-						}
+                        console.log("获取历史消息失败, code:" + error.code + ",错误信息:" + error.content);
 					}
 				});
 			},
