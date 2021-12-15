@@ -14,7 +14,7 @@
 ```
 ### 配置您的appkey
 ```
-在app.vue里，将appkey替换为您自己的common key
+在main.js里，将appkey替换为您自己的common key
 ```
 
 
