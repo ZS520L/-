@@ -27,5 +27,5 @@
 ####GoEasy官网
 
 www.goeasy.io    扫码添加GoEasy技术支持为好友  
-![image](https://www.goeasy.io/images/qrcode-2.png)
+![image](https://www.goeasy.io/images/qrcode-2.jpg)
 
