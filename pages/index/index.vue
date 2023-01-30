@@ -1,8 +1,8 @@
 <template>
 	<view>
 		<view class="header">
-			<text class="title">GoEasy示例</text>
-			<text class="title">聊天室（直播间）</text>
+			<text class="title">基于GoEasy</text>
+			<text class="title">墨棋在线实时对战</text>
 		</view>
 		<view class="content">
 			<input :class='nickname == "" ? "input-notice uni-input" : "uni-input"'
@@ -25,7 +25,7 @@
 				</view>
 			</view>
 			<view class="room-container">
-				<text class="room-title">请选择聊天室</text>
+				<text class="room-title">请选择对战室</text>
 				<view class="room-box">
 					<text
 						class="room-box-item"
@@ -44,14 +44,14 @@
 		data() {
 			return {
 				avatarList: [
-					{id: '1', imgUrl: '../../../static/images/1.png'},
-					{id: '2', imgUrl: '../../../static/images/2.png'},
-					{id: '3', imgUrl: '../../../static/images/3.png'},
-					{id: '4', imgUrl: '../../../static/images/4.png'},
-					{id: '5', imgUrl: '../../../static/images/5.png'},
-					{id: '6', imgUrl: '../../../static/images/6.png'},
-					{id: '7', imgUrl: '../../../static/images/7.png'},
-					{id: '8', imgUrl: '../../../static/images/8.png'}
+					{id: '1', imgUrl: '../../static/images/1.png'},
+					{id: '2', imgUrl: '../../static/images/2.png'},
+					{id: '3', imgUrl: '../../static/images/3.png'},
+					{id: '4', imgUrl: '../../static/images/4.png'},
+					{id: '5', imgUrl: '../../static/images/5.png'},
+					{id: '6', imgUrl: '../../static/images/6.png'},
+					{id: '7', imgUrl: '../../static/images/7.png'},
+					{id: '8', imgUrl: '../../static/images/8.png'}
 				],
 				roomList: [
 					{roomId: "001", name: "程序员集散地"},
@@ -99,7 +99,7 @@
 				};
 				let roomTokenAsJsonString = JSON.stringify(this.roomToken)
 				uni.navigateTo({
-					url: "/pages/vue/chatroom/chatroom?roomToken=" + roomTokenAsJsonString
+					url: "/pages/chatroom/chatroom?roomToken=" + roomTokenAsJsonString
 				})
 			}
 		}

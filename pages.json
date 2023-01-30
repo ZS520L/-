@@ -2,13 +2,13 @@
 	"pages": [
       //vue 版本，切换时可对应注释
       {
-        "path": "pages/vue/index/index",
+        "path": "pages/index/index",
         "style": {
-          "navigationBarTitleText": "GoEasy聊天室示例"
+          "navigationBarTitleText": "墨棋"
         }
       },
       {
-        "path": "pages/vue/chatroom/chatroom",
+        "path": "pages/chatroom/chatroom",
         "style": {
           "navigationBarTitleText": "GoEasy聊天室"
         }
