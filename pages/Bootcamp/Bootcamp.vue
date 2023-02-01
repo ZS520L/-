@@ -1,20 +1,9 @@
 <template>
 	<view class="chat-room">
 		<view class="online-avatar-container">
-			<view style="font-size: 40rpx;">
-				<text style="margin-bottom: 50rpx;">奇方：</text>
-				<image :src="currentRoom.onlineUsers.users[0].avatar" style="width: 80rpx;
-				height: 80rpx;
-				border-radius: 40rpx;"></image>
-				<text style="margin-bottom: 20rpx;">偶方：</text>
-				<image :src="currentRoom.onlineUsers.users[1].avatar" style="width: 80rpx;
-				height: 80rpx;
-				border-radius: 40rpx;"></view>
-			<view class="online-avatar-item" v-for="(user, key) in currentRoom.onlineUsers.users" :key="key"
-				:style="(currentRoom.onlineUsers.users.length-1)===key?'':'transform:translateX('+((currentRoom.onlineUsers.users.length-1-key)*20+20)+'rpx)'">
-				<image :src="user.avatar"></image>
-			</view>
-			<view class="online-count">{{currentRoom.onlineUsers.count}}</view>
+			<view style="padding-top: 20rpx; width: 375rpx; text-align: center;">千里之行始于足下</view>
+			<view style="padding-top: 20rpx; width: 375rpx; text-align: center;">百尺竿头更进一步</view>
+			
 		</view>
 		
 		
@@ -40,24 +29,24 @@
 		
 		<view class="chat-room-container">
 			<view class="scroll-view">
-				<view class="message-box" v-for="(message, key) in currentRoom.messages" :key="key" :id="'message-box'+ key">
-					<view class="message-item">
-						<text class="user-name">{{message && message.senderNickname}}:</text>
-						<text :class="message.senderUserId == currentRoom.currentUser.id ? 'user-message self' : 'user-message' ">
-							{{message && message.content}}
-						</text>
-					</view>
+				<view>
+					先手子称奇子，后手子称偶子。（双方各落一子算作一回合)第一回合双方随意落子。第二回合开始（即从第二颗奇子开始)
+					落子条件须满足:其格所在横竖撇捺四线中存在一线的棋子所代表数总和的奇偶性与此子的名称相符。
 				</view>
 			</view>
 			<view class="chat-room-input">
-				<view style="position: relative;">
-					<input class="uni-input" :value="newMessageContent" placeholder="说点什么..." @input="onInputMessage"/>
-					<view class="uni-btn" @click="sendMessage(MessageType.CHAT, newMessageContent)">↑</view>
-				</view>
-				<image class="heart" @click="sendMessage(MessageType.PROP, Prop.HEART)"
+				<image class="heart"
 					   src="../../static/images/handle-heart.png"></image>
-				<image class="rocket" @click="sendMessage(MessageType.PROP, Prop.ROCKET)"
-					   src="../../static/images/rocket.png"></image>
+				<image class="heart"
+					   src="../../static/images/handle-heart.png"></image>
+				<image class="heart"
+					   src="../../static/images/handle-heart.png"></image>
+				<image class="heart"
+					   src="../../static/images/handle-heart.png"></image>
+				<image class="heart"
+					   src="../../static/images/handle-heart.png"></image>
+				<image class="heart"
+					   src="../../static/images/handle-heart.png"></image>
 			</view>
 		</view>
 		<view class="show-animation" v-if="propDisplay.play">
@@ -157,13 +146,7 @@
 			this.nickname = roomToken.nickname
 			console.log('s'+roomToken.roomId,'ssss')
 			this.sroomId = 's'+roomToken.roomId;
-			uniCloud.callFunction({
-				name:"getData",
-				data:{roomId:'s'+roomToken.roomId}
-			}).then(res=>{ 
-				console.log(res.result.data[0].data,'ressssssss') 
-				this.game.h = res.result.data[0].data
-			})
+			
 			// 初始化room
 			this.currentRoom = {
 				roomId: roomToken.roomId,
@@ -186,17 +169,17 @@
 			});
 
 			// 连接goEasy
-			this.connectGoEasy();
+			// this.connectGoEasy();
 
             // 监听用户上下线
-            this.listenUsersOnlineOffline();
+            // this.listenUsersOnlineOffline();
 
 
             // 加载最后10条消息历史
-            this.loadHistory();
+            // this.loadHistory();
 
             // 监听新消息
-            this.listenNewMessage();
+            // this.listenNewMessage();
 
 
 
@@ -268,25 +251,7 @@
 									avatar: avatar,
 									nickname: nickname
 								};
-								//添加新用户
-								self.currentRoom.onlineUsers.users.push(user);
-								if (self.currentRoom.onlineUsers.users.length==1){
-									uniCloud.callFunction({
-										name:"update",
-										data:{
-											roomId:'s'+roomId,
-											data:[]
-										}
-									}).then(res=>{ 
-										console.log('更新成功');
-										self.game.h=[];
-									})
-								};
-								if (self.currentRoom.onlineUsers.users.length==2){
-									uni.showModal({
-										content: '匹配成功，游戏开始'
-									});
-								}
+								
 								// if (this.chessMassage.playerA){
 								// 	this.chessMassage.playerA = userId
 								// }
@@ -446,16 +411,6 @@
 						if(this.currentRoom.onlineUsers.users.length==1){ 
 							self.userInfo.chessRole = 1
 							self.userInfo.name = users[0].nickname
-							// uniCloud.callFunction({
-							// 	name:"update",
-							// 	data:{
-							// 		roomId:this.sroomId,
-							// 		data:this.game.h
-							// 	}
-							// }).then(res=>{ 
-							// 	console.log('更新成功')
-							// })
-							console.log('12334467')
 						}
 						if(users.length==2){
 							self.userInfo.chessRole = 2
@@ -599,19 +554,9 @@
 				        }
 				    }
 				}
-				console.log(this.currentRoom.currentUser.id, 'and', this.currentRoom.onlineUsers.users[0].id);
-				if(this.currentRoom.currentUser.id==this.currentRoom.onlineUsers.users[count%2].id){
-									
-					
-					
-					this.canvasClick(e,this.userInfo.cheeRole)
-					
-					this.userInfo.roundFlag = false
-				}else{
-					uni.showModal({
-						content: '还未到你的回合！'
-					});
-				}
+				this.canvasClick(e,this.userInfo.cheeRole)
+				
+				// this.userInfo.roundFlag = false
 				
 			},
 			canvasClick(e,chessRole) {
@@ -634,18 +579,12 @@
 				};
 				if (dx < 1 || (dx > dis - 1) | (dy < 1) || dy > dis - 1) return;
 				if (this.game.chess_Board[dx - 1][dy - 1] == 0 ) {
-					if (this.currentRoom.onlineUsers.users.length==1){
-						uni.showModal({
-							content: '对手未就位'
-						});
-					}
-					else if (!this.can(dx-1, dy-1)){
+					if (!this.can(dx-1, dy-1)){
 						uni.showModal({
 							content: '你不能下这里'
 						});
 					}
 					else{
-						console.log('???????????????????????')
 						this.game.h.push(WBobj);
 						this.game.chess_Board[dx - 1][dy - 1] = this.game.chess_Name[this.game.e % 2];
 						this.game.lianz[dx - 1][dy - 1] = WBobj;
@@ -656,16 +595,7 @@
 						this.cName = this.game.e % 2 == 0 ? this.game.chess_Name[1] + '走' : this.game.chess_Name[0] + '走';
 						this.sChesee = chessRole==2? 'Bchess' : 'Wchess';
 						this.game.e++;
-						this.sendMessage(this.MessageType.CHESS,e)
-						uniCloud.callFunction({
-							name:"update",
-							data:{
-								roomId:this.sroomId,
-								data:this.game.h
-							}
-						}).then(res=>{ 
-							console.log('更新成功')
-						})
+						// this.sendMessage(this.MessageType.CHESS,e)
 					}
 				}
 			},
@@ -789,49 +719,6 @@
 				}
 				
 				if (ms >= 5) {
-					uniCloud.callFunction({
-						name:"balance",
-						data:{
-							mode:1,
-							newblack:0,
-							newwhite:0
-						}
-					}).then(res=>{  
-						console.log(res.result.data[0].black,'balance') 
-						black = res.result.data[0].black;
-						white = res.result.data[0].white;
-						if (c=='白棋'){
-							black += 1;
-							uniCloud.callFunction({
-								name:"balance",
-								data:{
-									mode:0,
-									newblack:black,
-									newwhite:white
-								}
-							}).then(res=>{  
-								console.log('balance') 
-								
-							})
-						}
-						else{
-							white += 1;
-							uniCloud.callFunction({
-								name:"balance",
-								data:{
-									mode:0,
-									newblack:black,
-									newwhite:white
-								} 
-							}).then(res=>{  
-								console.log('balance') 
-							})
-						}
-					})
-					
-					
-					
-					
 					setTimeout(function() {
 						console.log(c + '赢了');
 					}, 600);
@@ -996,7 +883,7 @@
 	.scroll-view {
 		position: static;
 		overflow-y: scroll;
-		padding: 20rpx 38rpx 130rpx 38rpx;
+		padding: 0rpx 38rpx 130rpx 38rpx;
 		box-sizing: border-box;
 		-webkit-overflow-scrolling: touch;
 	}
@@ -1065,7 +952,7 @@
 	.heart {
 		width: 80rpx;
 		height: 92rpx;
-		padding: 0 15rpx;
+		padding: 0 22.5rpx;
 	}
 
 	.rocket {

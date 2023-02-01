@@ -1,7 +1,6 @@
 <template>
 	<view>
 		<view class="header">
-			<text class="title">基于GoEasy</text>
 			<text class="title">墨棋在线实时对战</text>
 		</view>
 		<view class="content">
@@ -36,6 +35,9 @@
 				</view>
 			</view>
 		</view>
+		<view style="margin-top: 120rpx;">
+			<button @click="login">封神榜</button>
+		</view>
 	</view>
 </template>
 
@@ -54,10 +56,12 @@
 					{id: '8', imgUrl: '../../static/images/8.png'}
 				],
 				roomList: [
-					{roomId: "001", name: "程序员集散地"},
-					{roomId: "002", name: "舌尖上的中国"},
-					{roomId: "003", name: "驴友之家"},
-					{roomId: "004", name: "球迷乐翻天"}
+					{roomId: "001", name: "对战室1"},
+					{roomId: "002", name: "对战室2"},
+					{roomId: "003", name: "对战室3"},
+					{roomId: "004", name: "对战室4"},
+					{roomId: "005", name: "AI挑战赛"},
+					{roomId: "006", name: "新手训练营"}
 				],
 				nickname: '',
 				selectedAvatar: {
@@ -73,13 +77,36 @@
 		},
 		onShow() {
 			Object.assign(this.$data, this.$options.data());
+			var that=this
+			uni.getStorage({
+			key: 'nickname',
+			success: function (res) {
+				console.log(res.data);
+				that.nickname=res.data
+			}
+			});
+			uni.getStorage({
+			key: 'avtar',
+			success: function (res) {
+				console.log(res.data);
+				that.selectedAvatar=res.data
+			}
+			});
+	
 		},
 		methods: {
 			onInputUserName(event) {// 输入用户名
 				this.nickname = event.target.value;
+				uni.setStorageSync('nickname',this.nickname);    // name为键名  LZJAPYX,ZDL为健值
+			},
+			login(){
+				uni.navigateTo({
+					url:"/pages/Leaderboard/Leaderboard"
+				})
 			},
 			onSelectAvatar(avtar) {//选择头像
 				this.selectedAvatar = avtar;
+				uni.setStorageSync('avtar',this.selectedAvatar);
 			},
 			onSelectRoom(room) {//登录
 				if (this.selectedAvatar.imgUrl == "" || this.nickname == "") {
@@ -95,12 +122,25 @@
 					roomName: room.name,
 					userId: (Math.random() * 1000).toString(),
 					nickname: this.nickname,
-					avatar: this.selectedAvatar.imgUrl
+					avatar: this.selectedAvatar.imgUrl 
 				};
 				let roomTokenAsJsonString = JSON.stringify(this.roomToken)
-				uni.navigateTo({
+				if (room.roomId=='005'){
+					uni.navigateTo({
+						url: "/pages/AI001/AI001?roomToken=" + roomTokenAsJsonString
+					})
+				}
+				else if (room.roomId=='006'){
+					uni.navigateTo({
+						url: "/pages/Bootcamp/Bootcamp?roomToken=" + roomTokenAsJsonString
+					})
+				}
+				else {
+					uni.navigateTo({
 					url: "/pages/chatroom/chatroom?roomToken=" + roomTokenAsJsonString
 				})
+				}
+				
 			}
 		}
 	}
