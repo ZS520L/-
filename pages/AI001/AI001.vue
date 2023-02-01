@@ -164,7 +164,7 @@
 					console.log("GoEasy disconnect failed"+JSON.stringify(error));
 				}
 			});
-		},
+		}, 
 		onHide(){
 			uni.reLaunch({
 				url: "/pages/index/index"

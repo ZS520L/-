@@ -37,6 +37,7 @@
 		</view>
 		<view style="margin-top: 120rpx;">
 			<button @click="login">封神榜</button>
+			<!-- <button @click="test">测试</button> -->
 		</view>
 	</view>
 </template>
@@ -104,6 +105,11 @@
 					url:"/pages/Leaderboard/Leaderboard"
 				})
 			},
+			test(){
+				uni.navigateTo({
+					url:"/pages/ai/ai"
+				})
+			},
 			onSelectAvatar(avtar) {//选择头像
 				this.selectedAvatar = avtar;
 				uni.setStorageSync('avtar',this.selectedAvatar);
@@ -126,8 +132,11 @@
 				};
 				let roomTokenAsJsonString = JSON.stringify(this.roomToken)
 				if (room.roomId=='005'){
+					// uni.navigateTo({
+					// 	url: "/pages/AI001/AI001?roomToken=" + roomTokenAsJsonString
+					// })
 					uni.navigateTo({
-						url: "/pages/AI001/AI001?roomToken=" + roomTokenAsJsonString
+						url:"/pages/ai/ai"
 					})
 				}
 				else if (room.roomId=='006'){

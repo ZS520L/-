@@ -44,7 +44,9 @@
 			<view class="boxtb">
 				<view class="u-m-t-10 fontBold u-font-32 c757575">规则说明:</view>
 				<view class="u-m-t-20 c757575">1、玩家先手</view>
-				<view class="u-m-t-10 c757575">2、其他规则，自行探索</view>
+				<view class="u-m-t-10 c757575">2、先手子称奇子，后手子称偶子。（双方各落一子算作一回合)第一回合双方随意落子。第二回合开始（即从第二颗奇子开始)
+				落子条件须满足:其格所在横竖撇捺四线中存在一线的棋子所代表数总和的奇偶性与此子的名称相符。
+				</view>
 			</view>
 		</view>
 		
@@ -73,8 +75,8 @@
 			return {
 				player: {	// 0=没有子  1=电脑  2=玩家
 					0: null, 
-					1: '../../static/images/white.png', 
-					2: '../../static/images/black.png'
+					2: '../../static/images/white.png', 
+					1: '../../static/images/black.png'
 				}, 
 				chessBoard: [],  	// 棋盘数组
 				isWho: true,  		// 该谁下
@@ -87,7 +89,7 @@
 		},
 		onLoad() {
 			this.chess_init();
-			uni.showToast({title: "欢迎来到五子棋~", icon:'none'});
+			uni.showToast({title: "欢迎来到墨棋~", icon:'none'});
 		},
 		methods:{
 			// 悔棋
@@ -96,7 +98,7 @@
 			},
 			// 重来
 			restart(){
-				uni.showToast({title: "欢迎来到五子棋~", icon:'none'});
+				uni.showToast({title: "欢迎来到墨棋~", icon:'none'});
 				this.chessBoard = [];
 				this.isOver = false;
 				this.isWho = true;
@@ -111,35 +113,126 @@
 					uni.showToast({title: "就这？就这？就这？回家喂猪吧!", icon:'none'});
 				}
 			},
+			// 墨棋规则限制落子
+			can(x, y) {
+				if (x<0 || x>14 || y<0 || y>14) {
+					return false;
+				}
+				// 横向
+				let horizontalSum = 0;
+				for (let i = 0; i < 15; i++) {
+				  horizontalSum += this.chessBoard[x][i];
+				}
+				
+				// 纵向
+				let verticalSum = 0;
+				for (let i = 0; i < 15; i++) {
+				  verticalSum += this.chessBoard[i][y];
+				}
+				
+				// 正斜向
+				let positiveSlopeSum = 0;
+				let i1 = x;
+				let j1 = y;
+				while (i1 >= 0 && j1 >= 0) {
+				  positiveSlopeSum += this.chessBoard[i1][j1];
+				  i1--;
+				  j1--;
+				}
+				i1 = x + 1;
+				j1 = y + 1;
+				while (i1 < 15 && j1 < 15) {
+				  positiveSlopeSum += this.chessBoard[i1][j1];
+				  i1++;
+				  j1++;
+				}
+				
+				// 反斜向
+				let negativeSlopeSum = 0;
+				let i2 = x;
+				let j2 = y;
+				while (i2 >= 0 && j2 < 15) {
+				  negativeSlopeSum += this.chessBoard[i2][j2];
+				  i2--;
+				  j2++;
+				}
+				i2 = x + 1;
+				j2 = y - 1;
+				while (i2 < 15 && j2 >= 0) {
+				  negativeSlopeSum += this.chessBoard[i2][j2];
+				  i2++;
+				  j2--;
+				}
+				var count = 0;
+				for (var i = 0; i < 15; i++) {
+				    for (var j = 0; j < 15; j++) {
+				        if (this.chessBoard[i][j] != 0) {
+				            count++;
+				        }
+				    }
+				}
+				if (count<2){
+					return true
+				}
+				else{
+					if ((horizontalSum > 0 && horizontalSum % 2 == 0) || (verticalSum>0&&verticalSum % 2 == 0) || (positiveSlopeSum>0&&positiveSlopeSum % 2 == 0) || (negativeSlopeSum>0&&negativeSlopeSum % 2 == 0)) {
+						// console.log("四个数存在偶数");
+						//说明偶数在下
+						if (!this.isWho){
+							return true;
+						}
+						
+					} 
+					if (horizontalSum % 2 == 1 || verticalSum % 2 == 1 || positiveSlopeSum % 2 == 1 || negativeSlopeSum % 2 == 1) {
+						// console.log("四个数存在奇数");
+						if (this.isWho){
+							return true;
+						}
+						
+					} 
+					
+					return false;
+					
+				}
+				
+			},
 			// 玩家落子
 			playerChess(x, y){
+				console.log('玩家落子',x,y)
 				// 当此点有棋子 或者 游戏结束 或者 不论到你时，则不能落子
 				if(this.chessBoard[x][y] != 0 || !this.isWho || this.isOver){
 					return;
 				}
-				// 落子
-				this.chessBoard[x][y] = 2; 		
-				this.$forceUpdate();
-				// 判断输赢
-				setTimeout(()=>{				
-					for(let k = 0; k < this.allCount; k++){
-						if(this.allWins[x][y][k] == true){
-							this.playerWins[k]++;
-							this.computerWins[k] = 6;
-							if(this.playerWins[k] == 5){
-								this.isOver = true;
-								uni.showToast({title: "玩家获胜!!!!"});
+				if(this.can(x,y)){
+					// 落子
+					this.chessBoard[x][y] = 1; 		
+					this.$forceUpdate();
+					// 判断输赢
+					setTimeout(()=>{				
+						for(let k = 0; k < this.allCount; k++){
+							if(this.allWins[x][y][k] == true){
+								this.playerWins[k]++;
+								this.computerWins[k] = 6;
+								if(this.playerWins[k] == 5){
+									this.isOver = true;
+									uni.showToast({title: "玩家获胜!!!!"});
+								}
 							}
 						}
-					}
-				},50)
-				// 如果玩家没获胜 则该电脑落子
-				setTimeout(()=>{
-					if(!this.isOver){			
-						this.isWho = !this.isWho;
-						this.computerChess();
-					}
-				},100)
+					},50)
+					// 如果玩家没获胜 则该电脑落子
+					setTimeout(()=>{
+						if(!this.isOver){			
+							this.isWho = !this.isWho;
+							this.computerChess();
+						}
+					},100)
+				}else{
+					uni.showModal({
+						title:"提示",
+						content: '按照规则，你不能下这里'
+					});
+				}
 			},
 			// 电脑落子
 			computerChess(){
@@ -199,27 +292,35 @@
 							// 玩家
 							if(playerScore[i][j] > maxScore){
 								maxScore = playerScore[i][j];
-								x = i;
-								y = j;
+								if(this.can(i,j)){
+									x = i;
+									y = j;
+								}
 							}else if(playerScore[i][j] == maxScore){		
 								// 如果玩家在当前点的分跟前一个相等，就再跟电脑自身在该点的值进行比较
 								// 如果电脑在当前点，比在上一个点的分大，说明电脑下这个点的优势更大， 以此类推，推出所有点的结果
 								if(computerScore[i][j] > computerScore[x][y]){
 									maxScore = computerScore[i][j];
-									x = i;
-									y = j;
+									if(this.can(i,j)){
+										x = i;
+										y = j;
+									}
 								}
 							}
 							// 电脑
 							if(computerScore[i][j] > maxScore){
 								maxScore = computerScore[i][j];
-								x = i;
-								y = j;
+								if(this.can(i,j)){
+									x = i;
+									y = j;
+								}
 							}else if(computerScore[i][j] == maxScore){
 								if(playerScore[i][j] > playerScore[x][y]){
 									maxScore = playerScore[i][j];
-									x = i;
-									y = j;
+									if(this.can(i,j)){
+										x = i;
+										y = j;
+									}
 								}
 							}
 							
@@ -228,7 +329,7 @@
 				}
 				
 				// 此时电脑就可以落子了
-				this.chessBoard[x][y] = 1;
+				this.chessBoard[x][y] = 2;
 				this.$forceUpdate();
 				// 判断电脑是否获胜
 				setTimeout(()=>{
@@ -326,7 +427,7 @@
 .goBang{padding: 30rpx;}
 .goBang-chess{width: 50rpx;height: 50rpx; border-radius: 50%;box-shadow: 0 0 8rpx 4rpx rgba(0,0,0,.2);}
 .goBang-board{
-	width: 650rpx;height: 650rpx;background-color: #f7e7b6;border-radius: 10rpx;border: 2rpx solid rgba(0,0,0,.05);box-shadow: 0 0 6rpx 2rpx rgba(0,0,0,.1);padding: 20rpx;
+	width: 650rpx;height: 650rpx;background-color: #f7e7b6;border-radius: 10rpx;border: 2rpx solid rgba(0,0,0,.05);box-shadow: 0 0 6rpx 2rpx rgba(0,0,0,.1);margin: 20rpx;
 	.goBang-grid-box{
 		width: 100%;height: 100%;
 		.point-c{position: absolute;width: 14rpx;height: 14rpx;border-radius: 50%;background-color: #C0A47C; top: 50%;left: 50%;transform: translate(-50%,-50%);}
@@ -341,16 +442,16 @@
 		.goBang-grid-td{flex: 1;border-right: 2rpx solid #C0A47C;border-bottom: 2rpx solid #C0A47C;}
 	}
 	.goBang-check{
-		display: flex;flex-direction: column;position: absolute;width: 650rpx;height: 650rpx;top: 125rpx;right: 0;left: 0;bottom: 0;z-index: 9999;border-radius: 10rpx;
+		display: flex;flex-direction: column;position: absolute;width: 690rpx;height: 690rpx;top: 114rpx;right: 13rpx;left: 13rpx;bottom: 0;z-index: 9999;border-radius: 10rpx;padding: 20rpx;
 		.goBang-check-tr{width: 100%;display: flex;flex: 1;}
 		.goBang-check-td{flex: 1;display: flex;align-items: center;justify-content: center;}
-		.goBang-check-chess{width: 50rpx;height: 50rpx;border-radius: 50%;box-shadow: 0 2rpx 10rpx 0rpx rgba(0,0,0,.5);}
+		.goBang-check-chess{width: 35rpx;height: 35rpx;border-radius: 50%;box-shadow: 0 2rpx 10rpx 0rpx rgba(0,0,0,.5);}
 	}
 }
 .goBang-btns{
 	display: flex;align-items: center;justify-content: center; position: fixed;bottom: 30rpx;right: 0;left: 0;padding: 30rpx;
 	.goBang-btn{
-		width: 90rpx;height: 90rpx; border-radius: 50%;background-color: #fff;box-shadow: 0 0 10rpx 4rpx rgba(0,0,0,.1);
+		width: 50rpx;height: 50rpx; border-radius: 50%;background-color: #fff;box-shadow: 0 0 10rpx 4rpx rgba(0,0,0,.1);
 		display: flex;align-items: center;justify-content: center;flex-direction: column;
 		margin-left: 30rpx;color: #999;font-size: 24rpx;
 	}
