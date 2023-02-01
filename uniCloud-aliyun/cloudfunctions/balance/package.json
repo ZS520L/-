@@ -1,0 +1,7 @@
+{
+  "name": "balance",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
